@@ -1,0 +1,4 @@
+run_name,model,loss,augment,weighted_sampler,best_epoch,test_accuracy,test_macro_f1,test_weighted_f1
+improved_cnn_weighted_ce,improved_cnn,weighted_ce,True,False,33,0.9649225372698041,0.9628534965287868,0.9650063099174596
+improved_cnn_ce,improved_cnn,ce,True,False,41,0.9649225372698041,0.9613919876934038,0.965090117886447
+simple_cnn_ce,simple_cnn,ce,False,False,46,0.9456299327681964,0.9401503761273409,0.9459127755992836

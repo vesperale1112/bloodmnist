@@ -1,0 +1,89 @@
+{
+  "args": {
+    "data": "bloodmnist.npz",
+    "output_dir": "outputs/runs",
+    "run_name": "improved_cnn_ce",
+    "model": "improved_cnn",
+    "loss": "ce",
+    "weighted_sampler": false,
+    "augment": true,
+    "epochs": 50,
+    "batch_size": 128,
+    "lr": 0.001,
+    "weight_decay": 0.0001,
+    "patience": 8,
+    "seed": 42,
+    "num_workers": 4,
+    "device": "cuda",
+    "max_train_batches": null,
+    "max_val_batches": null,
+    "skip_test": false
+  },
+  "run_name": "improved_cnn_ce",
+  "device": "cuda (NVIDIA GeForce RTX 4070 Laptop GPU)",
+  "num_parameters": 305000,
+  "class_names": [
+    "basophil",
+    "eosinophil",
+    "erythroblast",
+    "immature_granulocyte",
+    "lymphocyte",
+    "monocyte",
+    "neutrophil",
+    "platelet"
+  ],
+  "data_meta": {
+    "mean": [
+      0.8162291049957275,
+      0.6685421466827393,
+      0.6954758167266846
+    ],
+    "std": [
+      0.21517059206962585,
+      0.24152213335037231,
+      0.11746316403150558
+    ],
+    "class_distribution": {
+      "train": [
+        852,
+        2181,
+        1085,
+        2026,
+        849,
+        993,
+        2330,
+        1643
+      ],
+      "val": [
+        122,
+        312,
+        155,
+        290,
+        122,
+        143,
+        333,
+        235
+      ],
+      "test": [
+        244,
+        624,
+        311,
+        579,
+        243,
+        284,
+        666,
+        470
+      ]
+    },
+    "class_weights": [
+      1.4975098371505737,
+      0.5849969983100891,
+      1.1759247779846191,
+      0.6297523975372314,
+      1.5028014183044434,
+      1.2848726511001587,
+      0.5475873351097107,
+      0.7765541672706604
+    ]
+  }
+}
