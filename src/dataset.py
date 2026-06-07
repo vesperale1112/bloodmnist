@@ -1,4 +1,4 @@
-"""BloodMNIST data loading, normalization, and class-imbalance helpers."""
+"""BloodMNIST data loading, normalization, and class-imbalance helpers (Pure PyTorch, no torchvision)."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from typing import Any
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
-from torchvision import transforms
 
 from .constants import NUM_CLASSES, SPLITS
 
@@ -51,32 +51,42 @@ class BloodMNISTDataset(Dataset):
         mean: list[float] | tuple[float, float, float] | None = None,
         std: list[float] | tuple[float, float, float] | None = None,
         augment: bool = False,
+        image_size: int | None = None,
     ) -> None:
         self.images, self.labels = load_split(npz_path, split)
         self.split = split
-
-        steps: list[Any] = [transforms.ToPILImage()]
-        if augment:
-            steps.extend(
-                [
-                    transforms.RandomHorizontalFlip(p=0.5),
-                    transforms.RandomVerticalFlip(p=0.2),
-                    transforms.RandomRotation(degrees=12),
-                    transforms.ColorJitter(brightness=0.12, contrast=0.12, saturation=0.08, hue=0.02),
-                ]
-            )
-        steps.append(transforms.ToTensor())
-        if mean is not None and std is not None:
-            steps.append(transforms.Normalize(mean=mean, std=std))
-        self.transform = transforms.Compose(steps)
+        self.augment = augment
+        self.image_size = image_size
+        self.mean = torch.tensor(mean).view(3, 1, 1) if mean is not None else None
+        self.std = torch.tensor(std).view(3, 1, 1) if std is not None else None
 
     def __len__(self) -> int:
         return int(self.labels.shape[0])
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
-        image = self.transform(self.images[idx])
+        image_np = self.images[idx]
+        # HWC to CHW
+        image_tensor = torch.from_numpy(image_np.transpose((2, 0, 1))).float() / 255.0
+        
+        if self.image_size is not None:
+            image_tensor = F.interpolate(
+                image_tensor.unsqueeze(0), 
+                size=(self.image_size, self.image_size), 
+                mode='bilinear', 
+                align_corners=False
+            ).squeeze(0)
+
+        if self.augment:
+            if torch.rand(1).item() > 0.5:
+                image_tensor = torch.flip(image_tensor, [-1])
+            if torch.rand(1).item() > 0.8:
+                image_tensor = torch.flip(image_tensor, [-2])
+
+        if self.mean is not None and self.std is not None:
+            image_tensor = (image_tensor - self.mean) / self.std
+
         label = torch.tensor(int(self.labels[idx]), dtype=torch.long)
-        return image, label
+        return image_tensor, label
 
 
 def compute_class_weights(labels: np.ndarray, num_classes: int = NUM_CLASSES) -> torch.Tensor:
@@ -93,11 +103,12 @@ def make_data_loaders(
     num_workers: int,
     augment_train: bool,
     weighted_sampler: bool = False,
+    image_size: int | None = None,
 ) -> tuple[DataLoader, DataLoader, DataLoader, dict[str, Any]]:
     mean, std = compute_train_mean_std(npz_path)
-    train_dataset = BloodMNISTDataset(npz_path, "train", mean=mean, std=std, augment=augment_train)
-    val_dataset = BloodMNISTDataset(npz_path, "val", mean=mean, std=std, augment=False)
-    test_dataset = BloodMNISTDataset(npz_path, "test", mean=mean, std=std, augment=False)
+    train_dataset = BloodMNISTDataset(npz_path, "train", mean=mean, std=std, augment=augment_train, image_size=image_size)
+    val_dataset = BloodMNISTDataset(npz_path, "val", mean=mean, std=std, augment=False, image_size=image_size)
+    test_dataset = BloodMNISTDataset(npz_path, "test", mean=mean, std=std, augment=False, image_size=image_size)
 
     sampler = None
     shuffle = True
@@ -123,4 +134,3 @@ def make_data_loaders(
         "class_weights": compute_class_weights(train_dataset.labels).tolist(),
     }
     return train_loader, val_loader, test_loader, meta
-

@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data", default="bloodmnist.npz", help="Path to bloodmnist.npz.")
     parser.add_argument("--output-dir", default="outputs/runs", help="Root directory for training outputs.")
     parser.add_argument("--run-name", default=None, help="Run directory name. Defaults to timestamp plus model/loss.")
-    parser.add_argument("--model", default="improved_cnn", choices=["simple_cnn", "improved_cnn"])
+    parser.add_argument("--model", default="improved_cnn", choices=["simple_cnn", "improved_cnn", "resnet18"])
     parser.add_argument("--loss", default="ce", choices=["ce", "weighted_ce"])
     parser.add_argument("--weighted-sampler", action="store_true", help="Use balanced sampling for training batches.")
     parser.add_argument("--augment", action="store_true", help="Enable training-time image augmentation.")
@@ -37,6 +37,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument("--device", default="auto", help="auto, cpu, cuda, or cuda:0.")
+    parser.add_argument("--pretrained", action="store_true", help="Use pretrained weights for supported models.")
+    parser.add_argument("--image-size", type=int, default=None, help="Optional resize for input images (useful for pretrained models, e.g. 224).")
     parser.add_argument("--max-train-batches", type=int, default=None, help="Optional smoke-test limit.")
     parser.add_argument("--max-val-batches", type=int, default=None, help="Optional smoke-test limit.")
     parser.add_argument("--skip-test", action="store_true", help="Skip final test-set evaluation.")
@@ -150,15 +152,32 @@ def main() -> None:
     ensure_dir(output_dir / "metrics")
     ensure_dir(output_dir / "tables")
 
+    # If using pretrained models, default image size to 224 unless overridden
+    image_size = args.image_size
+    if args.pretrained and image_size is None:
+        image_size = 224
+
     train_loader, val_loader, test_loader, meta = make_data_loaders(
         args.data,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         augment_train=args.augment,
         weighted_sampler=args.weighted_sampler,
+        image_size=image_size,
     )
 
-    model = build_model(args.model, num_classes=NUM_CLASSES).to(device)
+    model = build_model(args.model, num_classes=NUM_CLASSES)
+    # if model supports pretrained weights and user asked for them, try to load
+    if args.pretrained and args.model.lower() == "resnet18":
+        try:
+            from torchvision.models import resnet18, ResNet18_Weights
+
+            model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+            model.fc = nn.Linear(model.fc.in_features, NUM_CLASSES)
+        except Exception:
+            # fall back to uninitialized if torchvision weights unavailable
+            pass
+    model = model.to(device)
     if args.loss == "weighted_ce":
         _, train_labels = load_split(args.data, "train")
         weights = compute_class_weights(train_labels).to(device)

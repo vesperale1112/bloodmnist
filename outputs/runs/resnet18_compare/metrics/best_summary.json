@@ -1,0 +1,5 @@
+{
+  "best_epoch": 42,
+  "best_val_macro_f1": 0.9748577911804177,
+  "best_checkpoint": "outputs/runs/resnet18_compare/checkpoints/best.pt"
+}
