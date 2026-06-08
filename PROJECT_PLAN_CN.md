@@ -1,50 +1,191 @@
-# BloodMNIST 项目中文方案
+# BloodMNIST 项目说明（Project Description CN）
 
-## 项目目标
+## 1. 项目一句话概述
 
-本项目基于 `bloodmnist.npz` 完成 BloodMNIST 8 分类疾病诊断任务。数据集已经划分为训练集、验证集和测试集，图像尺寸为 `28x28x3`，标签共 8 类。
+本仓库围绕 `bloodmnist.npz` 完成 BloodMNIST 血细胞图像 8 分类任务。当前项目不只是训练一个模型，而是搭建了一套从数据分析、训练、评估、实验对比到报告素材导出的完整流程，并已经保存了四组正式实验结果：
 
-代码目标不是只训练一个模型，而是形成一套完整、可复现、可用于报告和 PPT 展示的实验流程，包括数据分析、模型训练、性能评估、可视化结果和实验对比。
+- `simple_cnn_ce`：简单 CNN baseline。
+- `improved_cnn_ce`：改进 CNN，加训练增强，使用普通交叉熵。
+- `improved_cnn_weighted_ce`：改进 CNN，加训练增强，使用类别加权交叉熵。
+- `resnet18_compare`：额外加入的 ResNet18 对照实验，是当前仓库中效果最好的模型。
 
-## 实验设计
+文档目标是让组员快速看清楚：数据是什么、代码做了什么、每个实验为什么设计、当前结果如何、报告中可以引用哪些素材。
 
-本项目不加入迁移学习实验，重点用三组 CNN 实验形成递进式对比。设计思路是先建立一个简单 baseline，再加入更强的模型结构和数据增强，最后在主模型上处理类别不均衡问题。这样其他同学可以清楚判断：性能提升到底来自模型结构、数据增强，还是类别不均衡处理。
+## 2. 数据集与任务
 
-整体对比关系如下：
+### 2.1 任务定义
+
+- 数据文件：`bloodmnist.npz`
+- 图像格式：RGB 图像，尺寸为 `28 x 28 x 3`
+- 分类类别数：8 类
+- 数据划分：官方数据中已经提供 train、val、test 三个 split，本项目直接使用这些划分，不重新随机切分。
+- 标签顺序：使用 MedMNIST 官方 BloodMNIST 标签顺序。
+
+8 个类别分别是：
+
+| class_id | class_name |
+| ---: | --- |
+| 0 | basophil |
+| 1 | eosinophil |
+| 2 | erythroblast |
+| 3 | immature_granulocyte |
+| 4 | lymphocyte |
+| 5 | monocyte |
+| 6 | neutrophil |
+| 7 | platelet |
+
+### 2.2 数据分布
+
+当前仓库已经通过 `src/analyze_data.py` 生成了数据集摘要，输出在 `outputs/dataset/`。
+
+| class_id | class_name | train | val | test | weighted CE 权重 |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 0 | basophil | 852 | 122 | 244 | 1.4975 |
+| 1 | eosinophil | 2181 | 312 | 624 | 0.5850 |
+| 2 | erythroblast | 1085 | 155 | 311 | 1.1759 |
+| 3 | immature_granulocyte | 2026 | 290 | 579 | 0.6298 |
+| 4 | lymphocyte | 849 | 122 | 243 | 1.5028 |
+| 5 | monocyte | 993 | 143 | 284 | 1.2849 |
+| 6 | neutrophil | 2330 | 333 | 666 | 0.5476 |
+| 7 | platelet | 1643 | 235 | 470 | 0.7766 |
+
+整体样本数：
+
+- train：11,959
+- val：1,712
+- test：3,421
+
+可以看到训练集类别分布不均衡，例如 `neutrophil` 有 2330 张，而 `lymphocyte` 只有 849 张，`basophil` 只有 852 张。因此项目不能只看 accuracy，还需要重点看 macro F1 和 per-class recall。
+
+### 2.3 数据预处理与增强
+
+数据管线在 `src/dataset.py` 中实现，主要做了这些事：
+
+1. 从 `bloodmnist.npz` 中读取 `train_images`、`val_images`、`test_images` 和对应标签。
+2. 将图像从 NHWC 转成 PyTorch 使用的 CHW。
+3. 将像素值从 `[0, 255]` 缩放到 `[0, 1]`。
+4. 只用训练集计算 RGB 三通道均值和标准差。
+5. train、val、test 都使用同一组训练集均值和标准差做标准化。
+6. 训练增强只在 train split 上启用，val/test 不做随机增强。
+
+当前代码中的训练增强是纯 PyTorch 实现，避免依赖 torchvision transforms：
 
 ```text
-simple_cnn_ce
-  简单 CNN baseline
-  普通交叉熵
-  无训练增强
-
-        ↓ 对比模型结构和增强策略是否有效
-
-improved_cnn_ce
-  改进 CNN 主模型
-  普通交叉熵
-  加入训练增强
-
-        ↓ 控制模型结构不变，只改变损失函数
-
-improved_cnn_weighted_ce
-  改进 CNN 主模型
-  class-weighted cross entropy
-  加入训练增强
+水平翻转：概率 0.5
+垂直翻转：概率 0.2
+标准化：使用 train mean/std
 ```
 
-### 实验 1：`simple_cnn_ce`
+注意：当前代码没有使用旋转、ColorJitter 或随机裁剪。报告中如果描述 augmentation，应按上面这版当前实现来写。
 
-这个实验是 baseline，目的是回答“只用一个简单 CNN 能达到什么水平”。它不是最终主模型，但可以作为后续改进的参照。
+类别权重通过 `compute_class_weights` 计算：
 
-具体实现：
+```text
+class_weight[c] = total_train_samples / (num_classes * train_count[c])
+然后除以所有类别权重的均值，使平均权重约为 1
+```
 
-- 代码入口：`python -m src.train --model simple_cnn --loss ce --run-name simple_cnn_ce`
-- 模型文件：`src/models.py` 中的 `SimpleCNN`
-- 参数量：421,960
+这组权重只在 `improved_cnn_weighted_ce` 的损失函数中真正使用。其他实验虽然在 `run_config.json` 中也记录了权重元数据，但训练损失仍是普通交叉熵。
+
+## 3. 当前仓库做了哪些工作
+
+### 3.1 数据分析
+
+已完成内容：
+
+- 统计 train/val/test 中每个类别的样本数。
+- 计算训练集 RGB mean/std。
+- 生成类别分布图。
+- 生成按类别排列的样本展示图。
+
+对应文件：
+
+- `src/analyze_data.py`
+- `outputs/dataset/dataset_summary.json`
+- `outputs/dataset/tables/class_distribution.csv`
+- `outputs/dataset/figures/class_distribution.png`
+- `outputs/dataset/figures/sample_grid.png`
+
+报告用途：
+
+- 用类别分布图说明 BloodMNIST 存在类别不均衡。
+- 用样本展示图说明输入图像分辨率较低，但不同细胞形态和颜色仍有可学习特征。
+- 用 mean/std 说明标准化参数只从训练集得到，避免使用验证集或测试集信息。
+
+### 3.2 模型实现
+
+模型定义集中在 `src/models.py`，当前正式结果使用了三类模型：
+
+- `SimpleCNN`：小型 baseline CNN。
+- `ImprovedCNN`：更深的 CNN，加入 BatchNorm、Dropout2d、Dropout 和 global average pooling。
+- `ResNet18Light`：纯 PyTorch 轻量 ResNet18，不依赖 torchvision 的模型实现，针对 `28 x 28` 小图像做了入口层调整。
+
+此外，`src/models.py` 中还保留了 `ImprovedCNN_SE` 的类定义，但当前训练入口 `src/train.py` 的正式 choices 中没有开放这个模型，当前输出结果也没有包含这组实验。因此报告主线不需要把它作为正式实验写入。
+
+### 3.3 训练与评估流程
+
+训练入口是 `src/train.py`。它完成的流程如下：
+
+1. 固定随机种子 `seed=42`。
+2. 根据参数构建 DataLoader。
+3. 根据 `--model` 构建模型。
+4. 根据 `--loss` 选择普通 CE 或 weighted CE。
+5. 使用 AdamW 优化器。
+6. 使用 `ReduceLROnPlateau`，监控验证集 macro F1。
+7. 每个 epoch 保存训练和验证指标。
+8. 当验证集 macro F1 刷新时保存 best checkpoint。
+9. 训练结束后载入 best checkpoint。
+10. 在 test set 上做最终评估。
+11. 保存 metrics、per-class 表格、混淆矩阵、训练曲线和错误分类样例。
+
+关键设计点：
+
+- best checkpoint 的选择标准是 validation macro F1，而不是 validation accuracy。
+- 这样做是因为数据存在类别不均衡，macro F1 更能反映少数类表现。
+- 训练时如果使用 CUDA，会启用 PyTorch AMP autocast 和 GradScaler。
+- `--weighted-sampler` 也在代码中支持，但当前四组正式实验都没有使用 weighted sampler。
+
+### 3.4 结果汇总与错误分析
+
+结果汇总脚本是 `src/summarize_runs.py`。它会扫描 `outputs/runs/` 中的正式 run，跳过 `smoke_` 和 `check_` 开头的临时 run，然后生成：
+
+- `outputs/summary/tables/experiment_comparison.csv`
+- `outputs/summary/figures/experiment_comparison.png`
+
+错误样例脚本是 `src/error_visuals.py`。它会读取各模型 checkpoint，在测试集上生成高置信度错误样例和主要混淆类别样例：
+
+- `outputs/summary/error_examples/test_model_error_overview.png`
+- `outputs/summary/error_examples/*_test_high_confidence_errors.png`
+- `outputs/summary/error_examples/*_test_top_confusion_pairs.png`
+
+这些图适合放在报告的 error analysis 或 limitations 部分。
+
+## 4. 四组实验设计
+
+### 4.1 实验 1：`simple_cnn_ce`
+
+目的：建立最基础的 CNN baseline，回答“只用一个简单 CNN 能做到什么水平”。
+
+运行命令：
+
+```bash
+python -m src.train --model simple_cnn --loss ce --run-name simple_cnn_ce
+```
+
+配置摘要：
+
+- 模型：`SimpleCNN`
 - 损失函数：普通 `CrossEntropyLoss`
-- 数据增强：关闭，即训练集只做 `ToTensor` 和标准化
-- 训练输出目录：`outputs/runs/simple_cnn_ce`
+- 训练增强：关闭
+- 参数量：421,960
+- batch size：128
+- epochs：50
+- optimizer：AdamW
+- learning rate：1e-3
+- weight decay：1e-4
+- early stopping patience：8
+- best checkpoint 指标：validation macro F1
+- 输出目录：`outputs/runs/simple_cnn_ce`
 
 模型结构：
 
@@ -52,10 +193,10 @@ improved_cnn_weighted_ce
 Input: 3 x 28 x 28
 Conv2d(3 -> 32, kernel=3, padding=1)
 ReLU
-MaxPool2d(2)              输出约 32 x 14 x 14
+MaxPool2d(2)
 Conv2d(32 -> 64, kernel=3, padding=1)
 ReLU
-MaxPool2d(2)              输出约 64 x 7 x 7
+MaxPool2d(2)
 Flatten
 Dropout(0.25)
 Linear(64*7*7 -> 128)
@@ -64,24 +205,36 @@ Dropout(0.25)
 Linear(128 -> 8)
 ```
 
-为什么需要这一组：
+报告中怎么解释：
 
-- 它提供最基础的 CNN 结果，避免报告只展示一个模型而缺乏对比。
-- 如果改进模型提升明显，可以说明更深结构、正则化和增强策略是有价值的。
-- 它也能暴露简单模型的不足，例如对某些类别 recall 较低、混淆更多。
+- 这是 baseline，不是最终主模型。
+- 它提供后续模型改进的参照。
+- 它的参数量比 ImprovedCNN 更大，但性能更低，说明参数量本身不是关键，更合理的结构、归一化、正则化和增强更重要。
 
-### 实验 2：`improved_cnn_ce`
+### 4.2 实验 2：`improved_cnn_ce`
 
-这个实验是主模型的普通交叉熵版本，目的是验证改进 CNN 结构和数据增强是否比 baseline 更强。
+目的：验证更深 CNN 结构和训练增强是否能比 baseline 更好。
 
-具体实现：
+运行命令：
 
-- 代码入口：`python -m src.train --model improved_cnn --loss ce --augment --run-name improved_cnn_ce`
-- 模型文件：`src/models.py` 中的 `ImprovedCNN`
-- 参数量：305,000
+```bash
+python -m src.train --model improved_cnn --loss ce --augment --run-name improved_cnn_ce
+```
+
+配置摘要：
+
+- 模型：`ImprovedCNN`
 - 损失函数：普通 `CrossEntropyLoss`
-- 数据增强：开启
-- 训练输出目录：`outputs/runs/improved_cnn_ce`
+- 训练增强：开启水平/垂直翻转
+- 参数量：305,000
+- batch size：128
+- epochs：50
+- optimizer：AdamW
+- learning rate：1e-3
+- weight decay：1e-4
+- early stopping patience：8
+- best checkpoint 指标：validation macro F1
+- 输出目录：`outputs/runs/improved_cnn_ce`
 
 模型结构：
 
@@ -126,209 +279,321 @@ Dropout(0.25)
 Linear(128 -> 8)
 ```
 
-与 baseline 的主要区别：
+相对 baseline 的改进：
 
-- 卷积层更深：从 2 个卷积层增加到 6 个卷积层，特征表达能力更强。
-- 加入 BatchNorm：让训练更稳定，通常能加快收敛。
-- 加入 Dropout/Dropout2d：减少过拟合。
-- 使用 AdaptiveAvgPool：减少对固定空间展平特征的依赖，也减少分类头参数。
-- 使用训练增强：提升模型对图像方向、轻微旋转和颜色差异的鲁棒性。
+- 卷积层从 2 层增加到 6 层，特征表达能力更强。
+- 每个卷积块加入 BatchNorm，提高训练稳定性。
+- 使用 Dropout2d 和 Dropout，减少过拟合。
+- 使用 AdaptiveAvgPool2d，让分类头更轻量。
+- 训练时加入随机翻转增强，提高对图像方向变化的鲁棒性。
 
-训练增强的具体内容在 `src/dataset.py`：
+报告中怎么解释：
 
-```text
-RandomHorizontalFlip(p=0.5)
-RandomVerticalFlip(p=0.2)
-RandomRotation(degrees=12)
-ColorJitter(brightness=0.12, contrast=0.12, saturation=0.08, hue=0.02)
-ToTensor
-Normalize(mean=train_mean, std=train_std)
+- 它是项目中的主力 CNN 模型。
+- 它和 `simple_cnn_ce` 的对比可以说明模型结构与增强策略带来的提升。
+- 它和 `improved_cnn_weighted_ce` 的对比可以单独分析类别加权损失的影响。
+
+### 4.3 实验 3：`improved_cnn_weighted_ce`
+
+目的：在 ImprovedCNN 结构不变、训练增强不变的前提下，只改变损失函数，专门分析类别不均衡处理是否有帮助。
+
+运行命令：
+
+```bash
+python -m src.train --model improved_cnn --loss weighted_ce --augment --run-name improved_cnn_weighted_ce
 ```
 
-为什么需要这一组：
+配置摘要：
 
-- 它验证模型架构改进和增强策略的效果。
-- 它是后续类别加权实验的对照组。
-- 如果该模型比 `simple_cnn_ce` 明显更好，报告中可以把提升归因于更强 CNN 表达能力和正则化/增强策略。
-
-### 实验 3：`improved_cnn_weighted_ce`
-
-这个实验保持 `ImprovedCNN` 结构和训练增强不变，只把损失函数从普通交叉熵换成 class-weighted cross entropy。目的是专门分析 BloodMNIST 类别分布不均衡时，类别加权是否能提高类别均衡指标。
-
-具体实现：
-
-- 代码入口：`python -m src.train --model improved_cnn --loss weighted_ce --augment --run-name improved_cnn_weighted_ce`
-- 模型文件：仍然使用 `src/models.py` 中的 `ImprovedCNN`
-- 参数量：305,000
+- 模型：`ImprovedCNN`
 - 损失函数：`CrossEntropyLoss(weight=class_weights)`
-- 数据增强：开启，与 `improved_cnn_ce` 完全一致
-- 训练输出目录：`outputs/runs/improved_cnn_weighted_ce`
+- 训练增强：开启水平/垂直翻转
+- 参数量：305,000
+- batch size：128
+- epochs：50
+- optimizer：AdamW
+- learning rate：1e-3
+- weight decay：1e-4
+- early stopping patience：8
+- best checkpoint 指标：validation macro F1
+- 输出目录：`outputs/runs/improved_cnn_weighted_ce`
 
-类别权重计算逻辑在 `src/dataset.py` 的 `compute_class_weights`：
-
-```text
-class_weight[c] = total_train_samples / (num_classes * train_count[c])
-然后再除以所有类别权重的均值，使权重尺度更稳定
-```
-
-本次训练集得到的类别权重大致为：
-
-| class_id | class_name | train_count | weight |
-| ---: | --- | ---: | ---: |
-| 0 | basophil | 852 | 1.4975 |
-| 1 | eosinophil | 2181 | 0.5850 |
-| 2 | erythroblast | 1085 | 1.1759 |
-| 3 | immature_granulocyte | 2026 | 0.6298 |
-| 4 | lymphocyte | 849 | 1.5028 |
-| 5 | monocyte | 993 | 1.2849 |
-| 6 | neutrophil | 2330 | 0.5476 |
-| 7 | platelet | 1643 | 0.7766 |
-
-解释：
-
-- 样本少的类别，例如 `basophil`、`lymphocyte`、`monocyte`，权重更高。
-- 样本多的类别，例如 `neutrophil`、`eosinophil`，权重更低。
-- 这样训练时模型对少数类错误会受到更大惩罚，有利于改善 macro F1 和少数类 recall。
-
-为什么需要这一组：
-
-- 它和 `improved_cnn_ce` 只差损失函数，因此是一个比较干净的控制变量实验。
-- 如果 accuracy 不变但 macro F1 提升，可以说明类别加权主要改善了类别均衡表现，而不是单纯提高多数类正确率。
-- 这组结果可以直接支撑报告中对“长尾分布”和“类别不均衡”的讨论。
-
-### 三组实验共同训练设置
-
-三组正式实验都通过 `scripts/run_all_experiments.sh` 运行，共用以下设置：
+设计上的控制变量：
 
 ```text
-DEVICE=cuda
-NUM_WORKERS=4
-EPOCHS=50
-BATCH_SIZE=128
-seed=42
-optimizer=AdamW
-learning_rate=1e-3
-weight_decay=1e-4
-early_stopping_patience=8
-scheduler=ReduceLROnPlateau(mode=max, factor=0.5, patience=3)
-best_checkpoint_metric=validation macro F1
+improved_cnn_ce:
+  ImprovedCNN + augmentation + ordinary CE
+
+improved_cnn_weighted_ce:
+  ImprovedCNN + augmentation + weighted CE
 ```
 
-训练流程：
+两组只改变 loss，因此适合在报告里分析 class imbalance 的影响。
 
-1. 读取 `bloodmnist.npz` 中已经划分好的 train/val/test。
-2. 只用训练集计算 RGB 三通道均值和标准差。
-3. 对 train/val/test 使用相同标准化参数。
-4. 每个 epoch 训练一次训练集，再在验证集上评估。
-5. 用验证集 `macro_f1` 选择 best checkpoint。
-6. 训练结束后载入 best checkpoint。
-7. 最后在测试集上评估一次，保存 metrics、per-class 表格、混淆矩阵和错误分类样例。
+报告中怎么解释：
 
-### 评价指标设计
+- 少数类如 `basophil`、`lymphocyte`、`monocyte` 的权重更高。
+- 多数类如 `neutrophil`、`eosinophil` 的权重更低。
+- 如果 accuracy 接近但 macro F1 提升，可以说明类别加权主要改善了类别均衡表现，而不是只提高多数类正确率。
 
-本项目不只看 accuracy，因为 BloodMNIST 训练集类别分布不均衡。例如训练集中 `neutrophil` 有 2330 张，而 `lymphocyte` 只有 849 张。如果只看 accuracy，模型可能偏向多数类但仍得到较高总体分数。
+### 4.4 实验 4：`resnet18_compare`
 
-因此主要使用这些指标：
+目的：在手写 CNN 之外，加入一个更强的残差网络对照，判断当前任务是否还能从更深网络结构中获益。
 
-- `Accuracy`：总体分类正确率，适合给出直观性能。
-- `Macro F1`：每个类别权重相同，适合评价类别不均衡场景。
-- `Weighted F1`：按各类别样本数量加权，更接近整体数据分布下的平均表现。
-- `Per-class precision/recall/F1`：用于分析具体哪些血细胞类别表现好或差。
-- `Confusion matrix`：用于观察类别之间的混淆关系。
-
-报告中建议把 `macro F1` 作为类别不均衡讨论的核心指标，把 `accuracy` 作为总体性能指标。
-
-### 输出文件如何对应实验设计
-
-每个正式实验目录都包含：
-
-```text
-outputs/runs/<run_name>/run_config.json
-outputs/runs/<run_name>/checkpoints/best.pt
-outputs/runs/<run_name>/metrics/test_metrics.json
-outputs/runs/<run_name>/tables/test_per_class_metrics.csv
-outputs/runs/<run_name>/tables/test_confusion_matrix.csv
-outputs/runs/<run_name>/figures/training_curves.png
-outputs/runs/<run_name>/figures/test_confusion_matrix.png
-outputs/runs/<run_name>/figures/test_misclassified_examples.png
-```
-
-组员如果想检查某个实验具体怎么跑的，优先看对应目录下的 `run_config.json`。如果想检查最终表现，优先看 `metrics/test_metrics.json` 和 `tables/test_per_class_metrics.csv`。如果想写报告或 PPT，优先使用 `outputs/summary/` 和各 run 的 `figures/`。
-
-## 代码结构
-
-- `src/dataset.py`：读取 `bloodmnist.npz`，完成图像格式转换、归一化、增强、DataLoader 和类别权重计算。
-- `src/models.py`：实现 `SimpleCNN` 和 `ImprovedCNN`。
-- `src/train.py`：训练入口，支持 GPU/CPU 自动选择、early stopping、best checkpoint 保存和最终测试集评估。
-- `src/evaluate.py`：对已有 checkpoint 进行独立评估。
-- `src/analyze_data.py`：生成类别分布图、样本图和数据摘要。
-- `src/summarize_runs.py`：汇总多组实验结果，生成对比表和对比图。
-- `outputs/`：保存正式实验的指标、图表、checkpoint 和报告素材。
-
-## 运行方式
-
-完整实验命令：
+当前仓库保存的运行配置对应命令可概括为：
 
 ```bash
-DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experiments.sh
+python -m src.train \
+  --model resnet18 \
+  --loss ce \
+  --augment \
+  --lr 5e-4 \
+  --weight-decay 1e-3 \
+  --patience 10 \
+  --run-name resnet18_compare
 ```
 
-如果没有可用 GPU，代码会在 `DEVICE=auto` 时自动回退到 CPU：
+配置摘要：
+
+- 模型：`ResNet18Light`
+- 预训练：关闭，`pretrained=false`
+- 损失函数：普通 `CrossEntropyLoss`
+- 训练增强：开启水平/垂直翻转
+- 参数量：11,172,936
+- batch size：128
+- epochs：50
+- learning rate：5e-4
+- weight decay：1e-3
+- early stopping patience：10
+- best checkpoint 指标：validation macro F1
+- 输出目录：`outputs/runs/resnet18_compare`
+
+ResNet18Light 的结构特点：
+
+- 使用纯 PyTorch 手写实现，不依赖 torchvision 的 ResNet 模型。
+- 入口层针对 `28 x 28` 小图像调整为 `3 x 3` 卷积。
+- 去掉标准 ResNet 中对小图像过于激进的 `7 x 7` conv 和初始 maxpool。
+- 仍保留 ResNet18 的核心思想：残差连接和多 stage 特征提取。
+- stage 通道数为 64、128、256、512，每个 stage 2 个 BasicBlock。
+- 最后使用 AdaptiveAvgPool2d 和 Linear 分类到 8 类。
+
+报告中怎么解释：
+
+- ResNet18 是额外加入的强对照，不是原三组 CNN 递进实验的一部分。
+- 它当前取得了最高 test accuracy 和 test macro F1，可以作为最终性能上限或最佳模型展示。
+- 它的参数量明显大于 ImprovedCNN，因此报告需要同时讨论性能提升和模型复杂度提升。
+- 由于本次是从零训练，不是 ImageNet 迁移学习，所以不要把结果解释成 pretrained transfer learning 的效果。
+
+## 5. 训练设置与当前正式结果
+
+### 5.1 训练设置对比
+
+| run_name | model | loss | augment | 参数量 | lr | weight_decay | patience | best epoch |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `resnet18_compare` | ResNet18Light | CE | yes | 11,172,936 | 5e-4 | 1e-3 | 10 | 42 |
+| `improved_cnn_weighted_ce` | ImprovedCNN | weighted CE | yes | 305,000 | 1e-3 | 1e-4 | 8 | 33 |
+| `improved_cnn_ce` | ImprovedCNN | CE | yes | 305,000 | 1e-3 | 1e-4 | 8 | 41 |
+| `simple_cnn_ce` | SimpleCNN | CE | no | 421,960 | 1e-3 | 1e-4 | 8 | 46 |
+
+补充说明：
+
+- 三个 CNN run 的保存配置记录为 `device=cuda`，硬件为 NVIDIA GeForce RTX 4070 Laptop GPU。
+- `resnet18_compare` 的保存配置记录为 `device=auto`，实际记录设备为 CPU。
+- 四组实验都使用 `seed=42`。
+- 四组实验都没有使用 weighted sampler。
+
+### 5.2 测试集结果
+
+结果来自 `outputs/summary/tables/experiment_comparison.csv`。
+
+| run_name | Test Accuracy | Test Macro F1 | Test Weighted F1 | 测试集错误数 |
+| --- | ---: | ---: | ---: | ---: |
+| `resnet18_compare` | 0.9702 | 0.9687 | 0.9703 | 102 / 3421 |
+| `improved_cnn_weighted_ce` | 0.9649 | 0.9629 | 0.9650 | 120 / 3421 |
+| `improved_cnn_ce` | 0.9649 | 0.9614 | 0.9651 | 120 / 3421 |
+| `simple_cnn_ce` | 0.9456 | 0.9402 | 0.9459 | 186 / 3421 |
+
+主要结论：
+
+1. ResNet18Light 当前表现最好，test accuracy 为 0.9702，test macro F1 为 0.9687。
+2. ImprovedCNN 明显优于 SimpleCNN，说明更深结构、BatchNorm、Dropout、global pooling 和训练增强有效。
+3. 在 ImprovedCNN 内部比较时，weighted CE 和普通 CE 的 accuracy 相同，都是 0.9649。
+4. weighted CE 的 macro F1 更高，0.9629 对 0.9614，说明它对类别均衡指标有小幅帮助。
+5. 普通 CE 的 weighted F1 略高，说明在整体样本分布加权的平均表现上，两者差异很小。
+6. 如果报告要强调 class imbalance，推荐把 `improved_cnn_weighted_ce` 作为类别不均衡处理的主结果；如果报告要展示最高性能，推荐把 `resnet18_compare` 作为最佳模型。
+
+### 5.3 逐类表现要点
+
+ResNet18Light 的测试集逐类 F1：
+
+| class_name | precision | recall | F1 |
+| --- | ---: | ---: | ---: |
+| basophil | 0.9623 | 0.9426 | 0.9524 |
+| eosinophil | 0.9968 | 0.9920 | 0.9944 |
+| erythroblast | 1.0000 | 0.9743 | 0.9870 |
+| immature_granulocyte | 0.9227 | 0.9275 | 0.9251 |
+| lymphocyte | 0.9522 | 0.9835 | 0.9676 |
+| monocyte | 0.9349 | 0.9613 | 0.9479 |
+| neutrophil | 0.9774 | 0.9730 | 0.9752 |
+| platelet | 1.0000 | 1.0000 | 1.0000 |
+
+可以重点写的观察：
+
+- `platelet` 在四组实验中都非常容易分类，ResNet18 和 SimpleCNN 都达到 F1=1.0000。
+- `eosinophil` 和 `neutrophil` 整体表现也较强，可能与样本数较多、形态特征较明显有关。
+- `immature_granulocyte` 是比较困难的类别，ResNet18 的 F1 也只有 0.9251，是 ResNet18 中最低的类别 F1。
+- `monocyte` 和 `basophil` 在 baseline 中表现较弱，改进模型和 ResNet18 后有明显提升。
+- weighted CE 对 `basophil` recall 提升明显：`improved_cnn_weighted_ce` 为 0.9631，而 `improved_cnn_ce` 为 0.9344。
+
+### 5.4 主要混淆关系
+
+从测试集混淆矩阵和错误样例看，错误主要集中在以下方向：
+
+- `immature_granulocyte` 与 `monocyte` 之间容易混淆。
+- `immature_granulocyte` 与 `neutrophil` 之间容易混淆。
+- `basophil` 被错分成 `immature_granulocyte` 的情况在多个模型中出现。
+- SimpleCNN 中 `monocyte -> immature_granulocyte` 和 `neutrophil -> immature_granulocyte` 的错误更多，说明 baseline 对相近形态类别区分能力不足。
+
+各模型 top confusion pairs 可在下面这些图中查看：
+
+- `outputs/summary/error_examples/resnet18_compare_test_top_confusion_pairs.png`
+- `outputs/summary/error_examples/improved_cnn_weighted_ce_test_top_confusion_pairs.png`
+- `outputs/summary/error_examples/improved_cnn_ce_test_top_confusion_pairs.png`
+- `outputs/summary/error_examples/simple_cnn_ce_test_top_confusion_pairs.png`
+
+## 6. 代码结构与文件职责
+
+| 路径 | 作用 |
+| --- | --- |
+| `bloodmnist.npz` | BloodMNIST 数据文件 |
+| `requirements.txt` | Python 依赖 |
+| `scripts/run_all_experiments.sh` | 默认完整实验脚本，跑三组 CNN 主线实验并生成 summary |
+| `scripts/smoke_test.sh` | 快速 smoke test，用少量 batch 检查流程是否能跑通 |
+| `src/analyze_data.py` | 数据集统计、类别分布图、样本图 |
+| `src/dataset.py` | 数据读取、标准化、增强、DataLoader、class weights |
+| `src/models.py` | SimpleCNN、ImprovedCNN、ResNet18Light 等模型定义 |
+| `src/train.py` | 训练入口，保存 checkpoint、metrics、表格和图 |
+| `src/evaluate.py` | 对已有 checkpoint 做独立评估 |
+| `src/metrics.py` | accuracy、macro F1、weighted F1、per-class metrics 和 confusion matrix |
+| `src/visualize.py` | 训练曲线、混淆矩阵、样本图、错误样例图 |
+| `src/summarize_runs.py` | 汇总多组 run，生成实验对比表和对比图 |
+| `src/error_visuals.py` | 生成高置信度错误样例和 top confusion pairs 图 |
+| `outputs/dataset/` | 数据分析输出 |
+| `outputs/runs/` | 每个实验的 checkpoint、metrics、tables、figures |
+| `outputs/summary/` | 多实验汇总结果和报告素材 |
+
+## 7. 报告写作建议
+
+### 7.1 推荐报告结构
+
+1. 任务介绍：BloodMNIST 血细胞 8 分类，输入为 `28 x 28` RGB 图像。
+2. 数据分析：展示类别分布和样本图，说明类别不均衡。
+3. 方法设计：介绍数据预处理、标准化、训练增强、评价指标。
+4. 模型设计：按 SimpleCNN、ImprovedCNN、weighted CE、ResNet18Light 的顺序讲清楚递进关系。
+5. 实验设置：写 batch size、epochs、optimizer、learning rate、early stopping、best checkpoint 选择标准。
+6. 结果对比：引用 `experiment_comparison.csv` 和 `experiment_comparison.png`。
+7. 逐类分析：重点讨论 macro F1、少数类 recall、`immature_granulocyte` 等难分类类别。
+8. 错误分析：引用 confusion matrix 和 top confusion pairs。
+9. 局限性与未来工作：讨论低分辨率、类别不均衡、可解释性和泛化能力。
+
+### 7.2 哪些结果适合放进正文
+
+建议正文必须放：
+
+- `outputs/dataset/figures/class_distribution.png`
+- `outputs/dataset/figures/sample_grid.png`
+- `outputs/summary/figures/experiment_comparison.png`
+- `outputs/runs/resnet18_compare/figures/test_confusion_matrix.png`
+- `outputs/runs/improved_cnn_weighted_ce/figures/test_confusion_matrix.png`
+
+建议正文或附录放：
+
+- `outputs/runs/*/figures/training_curves.png`
+- `outputs/runs/*/figures/test_misclassified_examples.png`
+- `outputs/summary/error_examples/test_model_error_overview.png`
+- `outputs/summary/error_examples/*_test_high_confidence_errors.png`
+- `outputs/summary/error_examples/*_test_top_confusion_pairs.png`
+
+### 7.3 结果解读主线
+
+可以按下面逻辑写：
+
+1. SimpleCNN 已经能达到 0.9456 accuracy，说明 BloodMNIST 的图像信息足以支持 CNN 学习。
+2. ImprovedCNN 提升到 0.9649 accuracy，说明更深卷积结构、BatchNorm、Dropout、global pooling 和增强策略有效。
+3. weighted CE 在 ImprovedCNN 上没有改变 overall accuracy，但提升了 macro F1，说明它更适合支持类别不均衡讨论。
+4. ResNet18Light 进一步提升到 0.9702 accuracy 和 0.9687 macro F1，说明残差结构对该任务仍有收益。
+5. 但 ResNet18Light 参数量约 1117 万，远高于 ImprovedCNN 的 30.5 万，因此需要在性能和模型复杂度之间做讨论。
+
+## 8. 如何运行
+
+### 8.1 安装依赖
 
 ```bash
-DEVICE=auto EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experiments.sh
+pip install -r requirements.txt
 ```
 
-快速检查代码是否能跑通：
+### 8.2 快速检查
 
 ```bash
 bash scripts/smoke_test.sh
 ```
 
-## 当前正式结果
+这个脚本会生成 `outputs/smoke_dataset/` 和一个 `smoke_simple_cnn` run，用来检查数据读取、训练、评估和图像导出是否正常。
 
-| 实验 | 模型 | 损失函数 | 最佳 epoch | Test Accuracy | Test Macro F1 | Test Weighted F1 |
-| --- | --- | --- | ---: | ---: | ---: | ---: |
-| `improved_cnn_weighted_ce` | Improved CNN | weighted CE | 33 | 0.9649 | 0.9629 | 0.9650 |
-| `improved_cnn_ce` | Improved CNN | CE | 41 | 0.9649 | 0.9614 | 0.9651 |
-| `simple_cnn_ce` | Simple CNN | CE | 46 | 0.9456 | 0.9402 | 0.9459 |
+### 8.3 运行默认三组 CNN 实验
 
-结论上，`ImprovedCNN` 明显优于简单 CNN。加权交叉熵的总体准确率与普通交叉熵相同，但 macro F1 更高，因此更适合作为处理类别不均衡问题的主结果。
+```bash
+DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experiments.sh
+```
 
-## 报告和 PPT 可用素材
+如果没有 GPU，可以使用：
 
-可以直接引用以下文件：
+```bash
+DEVICE=auto NUM_WORKERS=0 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experiments.sh
+```
 
-- `outputs/summary/tables/experiment_comparison.csv`：三组实验对比表。
-- `outputs/summary/figures/experiment_comparison.png`：三组实验指标对比图。
-- `outputs/dataset/figures/class_distribution.png`：类别分布图。
-- `outputs/dataset/figures/sample_grid.png`：各类别样本展示。
-- `outputs/runs/*/figures/training_curves.png`：训练曲线。
-- `outputs/runs/*/figures/test_confusion_matrix.png`：测试集混淆矩阵。
-- `outputs/runs/*/figures/test_misclassified_examples.png`：错误分类样例。
-- `outputs/runs/*/tables/test_per_class_metrics.csv`：每一类 precision、recall、F1。
+注意：`scripts/run_all_experiments.sh` 当前默认只跑三组 CNN 主线实验，不自动跑 `resnet18_compare`。
 
-## 结果分析思路
+### 8.4 单独运行 ResNet18 对照实验
 
-报告中建议重点分析：
+```bash
+python -m src.train \
+  --model resnet18 \
+  --loss ce \
+  --augment \
+  --lr 5e-4 \
+  --weight-decay 1e-3 \
+  --patience 10 \
+  --run-name resnet18_compare \
+  --device auto
+```
 
-- Baseline CNN 到 Improved CNN 的性能提升，说明更深卷积结构、BatchNorm、Dropout 和增强策略有效。
-- Accuracy 与 macro F1 的差异，说明只看总体准确率不足以评价长尾类别表现。
-- Weighted CE 对 macro F1 的提升，说明类别不均衡处理对类别均衡指标有帮助。
-- 混淆矩阵中容易混淆的类别，结合错误分类样例讨论模型局限。
+### 8.5 重新汇总结果
 
-## 模型不足
+```bash
+python -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summary
+```
 
-- 数据只有图像级标签，缺乏像素级或细胞区域精细标注，模型无法显式定位关键病理区域。
-- 类别分布不均衡，少数类诊断表现更容易受到影响。
-- 图像分辨率只有 `28x28`，细胞形态细节有限。
-- CNN 的可解释性有限，临床诊断依据不够透明。
-- 数据集规模有限，模型泛化能力仍需要更多外部数据验证。
+### 8.6 生成错误样例图
 
-## 可行改进方向
+```bash
+python -m src.error_visuals --device cpu --num-workers 0
+```
 
-- 使用 GAN 或 diffusion 生成少数类样本，增强长尾类别。
+## 9. 局限性与后续改进
+
+当前项目的局限性：
+
+- 输入图像只有 `28 x 28`，很多细胞形态细节会丢失。
+- 数据只有图像级类别标签，没有细胞区域标注或像素级病理标注。
+- 类别不均衡仍然存在，weighted CE 只带来小幅 macro F1 提升。
+- 模型可解释性有限，目前主要通过混淆矩阵和错误样例做分析。
+- 当前 ResNet18 虽然表现最好，但参数量明显更大，需要考虑复杂度和训练成本。
+
+可行改进方向：
+
 - 尝试 focal loss、class-balanced loss 或 weighted sampler。
-- 使用 Grad-CAM 或 attention 可视化提升可解释性。
-- 引入更高分辨率图像、细胞区域标注或像素级标注。
-- 在后续扩展中再考虑医学图像预训练模型或迁移学习。
+- 针对少数类做更系统的数据增强。
+- 加入 Grad-CAM 等可解释性方法。
+- 尝试更轻量的 residual CNN，寻找性能和参数量的平衡点。
+- 如果课程允许，可以尝试医学图像预训练或迁移学习，但需要和当前从零训练结果区分清楚。
