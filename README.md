@@ -8,7 +8,7 @@
 - 实现了纯 PyTorch 数据管线，包括标准化、训练增强、class weights 和 DataLoader。
 - 实现并训练了 SimpleCNN、ImprovedCNN 和 ResNet18Light。
 - 完成了三组 CNN 主线实验和一组额外 ResNet18 对照实验。
-- 保存了每组实验的 checkpoint、训练曲线、测试指标、逐类指标、混淆矩阵和错误分类样例。
+- 保存了每组实验的 checkpoint、训练曲线、测试指标、逐类指标、AUC、ECE/calibration、混淆矩阵和错误分类样例。
 - 生成了汇总对比表、对比图和高置信度错误样例图，便于写报告和做 PPT。
 
 ## 数据与任务
@@ -19,7 +19,7 @@
 - 数据划分：train 11,959 张，val 1,712 张，test 3,421 张
 - 类别：`basophil`、`eosinophil`、`erythroblast`、`immature_granulocyte`、`lymphocyte`、`monocyte`、`neutrophil`、`platelet`
 
-数据存在类别不均衡，因此项目同时关注 accuracy、macro F1、weighted F1、per-class recall 和 confusion matrix。
+数据存在类别不均衡，因此项目同时关注 accuracy、macro F1、weighted F1、one-vs-rest AUC、ECE、per-class recall 和 confusion matrix。
 
 ## 当前正式实验
 
@@ -46,8 +46,8 @@
 | `src/analyze_data.py` | 数据统计、类别分布图、样本图 |
 | `src/dataset.py` | NPZ 读取、标准化、训练增强、class weights、DataLoader |
 | `src/models.py` | SimpleCNN、ImprovedCNN、ResNet18Light |
-| `src/train.py` | 模型训练、验证、best checkpoint、测试评估 |
-| `src/evaluate.py` | 对已有 checkpoint 做独立评估 |
+| `src/train.py` | 模型训练、验证、best checkpoint、测试评估、AUC/ECE 输出 |
+| `src/evaluate.py` | 对已有 checkpoint 做独立评估并生成 AUC/ECE |
 | `src/summarize_runs.py` | 汇总多组实验，生成对比表和对比图 |
 | `src/error_visuals.py` | 生成高置信度错误样例和主要混淆类别图 |
 | `outputs/dataset/` | 数据分析输出 |
@@ -64,8 +64,10 @@
 - `outputs/summary/figures/experiment_comparison.png`
 - `outputs/runs/*/figures/training_curves.png`
 - `outputs/runs/*/figures/test_confusion_matrix.png`
+- `outputs/runs/*/figures/test_reliability_diagram.png`
 - `outputs/runs/*/figures/test_misclassified_examples.png`
 - `outputs/runs/*/tables/test_per_class_metrics.csv`
+- `outputs/runs/*/tables/test_calibration_bins.csv`
 - `outputs/summary/error_examples/test_model_error_overview.png`
 - `outputs/summary/error_examples/*_test_top_confusion_pairs.png`
 
@@ -119,6 +121,8 @@ python3 -m src.train \
 ```bash
 python3 -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summary
 ```
+
+重新训练或重新评估后，`test_metrics.json` 会包含 `macro_auc_ovr`、`weighted_auc_ovr`、`ece`、`mce`、`nll` 和 `brier_score`。逐类表会包含 `auc_ovr`，calibration bin 表和 reliability diagram 会输出到每个 run 的 `tables/` 和 `figures/` 目录。
 
 生成额外错误样例图：
 

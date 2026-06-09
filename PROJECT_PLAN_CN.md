@@ -136,12 +136,13 @@ class_weight[c] = total_train_samples / (num_classes * train_count[c])
 8. 当验证集 macro F1 刷新时保存 best checkpoint。
 9. 训练结束后载入 best checkpoint。
 10. 在 test set 上做最终评估。
-11. 保存 metrics、per-class 表格、混淆矩阵、训练曲线和错误分类样例。
+11. 保存 metrics、per-class 表格、AUC、ECE/calibration、混淆矩阵、训练曲线和错误分类样例。
 
 关键设计点：
 
 - best checkpoint 的选择标准是 validation macro F1，而不是 validation accuracy。
 - 这样做是因为数据存在类别不均衡，macro F1 更能反映少数类表现。
+- 重新训练或重新评估后，metrics 中会包含 one-vs-rest macro/weighted AUC、ECE、MCE、NLL 和 Brier score。
 - 训练时如果使用 CUDA，会启用 PyTorch AMP autocast 和 GradScaler。
 - `--weighted-sampler` 也在代码中支持，但当前四组正式实验都没有使用 weighted sampler。
 
@@ -474,7 +475,7 @@ ResNet18Light 的测试集逐类 F1：
 | `src/models.py` | SimpleCNN、ImprovedCNN、ResNet18Light 等模型定义 |
 | `src/train.py` | 训练入口，保存 checkpoint、metrics、表格和图 |
 | `src/evaluate.py` | 对已有 checkpoint 做独立评估 |
-| `src/metrics.py` | accuracy、macro F1、weighted F1、per-class metrics 和 confusion matrix |
+| `src/metrics.py` | accuracy、macro F1、weighted F1、AUC、ECE/calibration、per-class metrics 和 confusion matrix |
 | `src/visualize.py` | 训练曲线、混淆矩阵、样本图、错误样例图 |
 | `src/summarize_runs.py` | 汇总多组 run，生成实验对比表和对比图 |
 | `src/error_visuals.py` | 生成高置信度错误样例和 top confusion pairs 图 |
@@ -510,9 +511,14 @@ ResNet18Light 的测试集逐类 F1：
 
 - `outputs/runs/*/figures/training_curves.png`
 - `outputs/runs/*/figures/test_misclassified_examples.png`
+- `outputs/runs/*/figures/test_reliability_diagram.png`
+- `outputs/runs/*/tables/test_calibration_bins.csv`
+- `outputs/runs/*/metrics/test_metrics.json` 中的 `macro_auc_ovr`、`weighted_auc_ovr`、`ece`、`mce`、`nll`、`brier_score`
 - `outputs/summary/error_examples/test_model_error_overview.png`
 - `outputs/summary/error_examples/*_test_high_confidence_errors.png`
 - `outputs/summary/error_examples/*_test_top_confusion_pairs.png`
+
+AUC 适合补充医学分类任务中的排序/区分能力分析，ECE 和 reliability diagram 适合讨论模型置信度是否校准。
 
 ### 7.3 结果解读主线
 
@@ -588,6 +594,19 @@ python3 -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summa
 ```bash
 python3 -m src.error_visuals --device cpu --num-workers 0
 ```
+
+### 8.7 重新评估已有 checkpoint 以生成 AUC/ECE
+
+如果已有 checkpoint 是旧代码训练出来的，可以不用重训，直接运行：
+
+```bash
+python3 -m src.evaluate \
+  --checkpoint outputs/runs/resnet18_compare/checkpoints/best.pt \
+  --split test \
+  --device auto
+```
+
+这会在对应 run 目录下生成 `eval_test/`，其中包含新的 AUC、ECE、calibration bins 和 reliability diagram。
 
 ## 9. 局限性与后续改进
 

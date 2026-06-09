@@ -17,7 +17,13 @@ from .dataset import compute_class_weights, load_split, make_data_loaders
 from .metrics import classification_metrics, per_class_dataframe
 from .models import build_model
 from .utils import configure_torch_runtime, count_parameters, describe_device, ensure_dir, resolve_device, save_json, set_seed
-from .visualize import plot_class_distribution, plot_confusion_matrix, plot_history, save_misclassified_examples
+from .visualize import (
+    plot_class_distribution,
+    plot_confusion_matrix,
+    plot_history,
+    plot_reliability_diagram,
+    save_misclassified_examples,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -41,6 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--image-size", type=int, default=None, help="Optional resize for input images (useful for pretrained models, e.g. 224).")
     parser.add_argument("--max-train-batches", type=int, default=None, help="Optional smoke-test limit.")
     parser.add_argument("--max-val-batches", type=int, default=None, help="Optional smoke-test limit.")
+    parser.add_argument("--calibration-bins", type=int, default=15, help="Number of bins for ECE/reliability diagrams.")
     parser.add_argument("--skip-test", action="store_true", help="Skip final test-set evaluation.")
     return parser.parse_args()
 
@@ -52,6 +59,7 @@ def run_epoch(
     device: torch.device,
     optimizer: torch.optim.Optimizer | None = None,
     max_batches: int | None = None,
+    calibration_bins: int = 15,
 ) -> dict[str, Any]:
     training = optimizer is not None
     model.train(training)
@@ -59,6 +67,7 @@ def run_epoch(
     losses: list[float] = []
     y_true: list[int] = []
     y_pred: list[int] = []
+    y_score: list[np.ndarray] = []
     scaler = torch.amp.GradScaler("cuda", enabled=training and device.type == "cuda")
 
     for batch_idx, (images, labels) in enumerate(loader):
@@ -81,14 +90,22 @@ def run_epoch(
                 scaler.update()
 
         batch_size = labels.size(0)
+        probs = torch.softmax(logits.detach(), dim=1)
         losses.append(float(loss.detach().cpu()) * batch_size)
         y_true.extend(labels.detach().cpu().numpy().tolist())
-        y_pred.extend(logits.argmax(dim=1).detach().cpu().numpy().tolist())
+        y_pred.extend(probs.argmax(dim=1).detach().cpu().numpy().tolist())
+        y_score.append(probs.detach().cpu().numpy())
 
     if not y_true:
         raise RuntimeError("No batches were processed. Check batch limits and dataloader size.")
 
-    metrics = classification_metrics(np.asarray(y_true), np.asarray(y_pred), CLASS_NAMES)
+    metrics = classification_metrics(
+        np.asarray(y_true),
+        np.asarray(y_pred),
+        CLASS_NAMES,
+        y_score=np.concatenate(y_score, axis=0),
+        calibration_bins=calibration_bins,
+    )
     metrics["loss"] = float(np.sum(losses) / len(y_true))
     return metrics
 
@@ -117,6 +134,10 @@ def save_checkpoint(
     )
 
 
+def format_metric(value: Any) -> str:
+    return "nan" if value is None else f"{float(value):.4f}"
+
+
 def final_evaluation(
     model: nn.Module,
     loader: torch.utils.data.DataLoader,
@@ -124,13 +145,18 @@ def final_evaluation(
     device: torch.device,
     output_dir: Path,
     split: str,
+    calibration_bins: int,
 ) -> dict[str, Any]:
-    metrics = run_epoch(model, loader, criterion, device, optimizer=None)
+    metrics = run_epoch(model, loader, criterion, device, optimizer=None, calibration_bins=calibration_bins)
     save_json(metrics, output_dir / "metrics" / f"{split}_metrics.json")
     per_class_dataframe(metrics).to_csv(output_dir / "tables" / f"{split}_per_class_metrics.csv", index=False)
     pd.DataFrame(metrics["confusion_matrix"]).to_csv(output_dir / "tables" / f"{split}_confusion_matrix.csv", index=False)
+    if "calibration_bins" in metrics:
+        pd.DataFrame(metrics["calibration_bins"]).to_csv(output_dir / "tables" / f"{split}_calibration_bins.csv", index=False)
     plot_confusion_matrix(metrics["confusion_matrix"], output_dir / "figures" / f"{split}_confusion_matrix.png")
     plot_confusion_matrix(metrics["confusion_matrix"], output_dir / "figures" / f"{split}_confusion_matrix_raw.png", normalize=False)
+    if "calibration_bins" in metrics:
+        plot_reliability_diagram(metrics["calibration_bins"], output_dir / "figures" / f"{split}_reliability_diagram.png")
     return metrics
 
 
@@ -217,6 +243,7 @@ def main() -> None:
             device,
             optimizer=optimizer,
             max_batches=args.max_train_batches,
+            calibration_bins=args.calibration_bins,
         )
         val_metrics = run_epoch(
             model,
@@ -225,6 +252,7 @@ def main() -> None:
             device,
             optimizer=None,
             max_batches=args.max_val_batches,
+            calibration_bins=args.calibration_bins,
         )
         scheduler.step(val_metrics["macro_f1"])
 
@@ -234,10 +262,14 @@ def main() -> None:
             "train_loss": train_metrics["loss"],
             "train_accuracy": train_metrics["accuracy"],
             "train_macro_f1": train_metrics["macro_f1"],
+            "train_macro_auc_ovr": train_metrics.get("macro_auc_ovr"),
+            "train_ece": train_metrics.get("ece"),
             "val_loss": val_metrics["loss"],
             "val_accuracy": val_metrics["accuracy"],
             "val_macro_f1": val_metrics["macro_f1"],
             "val_weighted_f1": val_metrics["weighted_f1"],
+            "val_macro_auc_ovr": val_metrics.get("macro_auc_ovr"),
+            "val_ece": val_metrics.get("ece"),
         }
         history.append(row)
         pd.DataFrame(history).to_csv(output_dir / "tables" / "history.csv", index=False)
@@ -245,8 +277,10 @@ def main() -> None:
         plot_history(history, output_dir / "figures" / "training_curves.png")
 
         print(
-            "Epoch {epoch:03d} | train loss {train_loss:.4f} acc {train_accuracy:.4f} macroF1 {train_macro_f1:.4f} "
-            "| val loss {val_loss:.4f} acc {val_accuracy:.4f} macroF1 {val_macro_f1:.4f}".format(**row)
+            f"Epoch {epoch:03d} | train loss {row['train_loss']:.4f} acc {row['train_accuracy']:.4f} "
+            f"macroF1 {row['train_macro_f1']:.4f} | val loss {row['val_loss']:.4f} "
+            f"acc {row['val_accuracy']:.4f} macroF1 {row['val_macro_f1']:.4f} "
+            f"macroAUC {format_metric(row['val_macro_auc_ovr'])} ECE {format_metric(row['val_ece'])}"
         )
 
         current_metric = val_metrics["macro_f1"]
@@ -268,9 +302,9 @@ def main() -> None:
     best_summary = {"best_epoch": best_epoch, "best_val_macro_f1": best_metric, "best_checkpoint": str(best_path)}
     save_json(best_summary, output_dir / "metrics" / "best_summary.json")
 
-    val_metrics = final_evaluation(model, val_loader, criterion, device, output_dir, "val")
+    val_metrics = final_evaluation(model, val_loader, criterion, device, output_dir, "val", args.calibration_bins)
     if not args.skip_test:
-        test_metrics = final_evaluation(model, test_loader, criterion, device, output_dir, "test")
+        test_metrics = final_evaluation(model, test_loader, criterion, device, output_dir, "test", args.calibration_bins)
         test_images, test_labels = load_split(args.data, "test")
         all_pred: list[int] = []
         model.eval()
@@ -285,13 +319,16 @@ def main() -> None:
             output_dir / "figures" / "test_misclassified_examples.png",
         )
         print(
-            "Best epoch {best_epoch} | test acc {accuracy:.4f} macroF1 {macro_f1:.4f} weightedF1 {weighted_f1:.4f}".format(
-                best_epoch=best_epoch,
-                **test_metrics,
-            )
+            f"Best epoch {best_epoch} | test acc {test_metrics['accuracy']:.4f} "
+            f"macroF1 {test_metrics['macro_f1']:.4f} weightedF1 {test_metrics['weighted_f1']:.4f} "
+            f"macroAUC {format_metric(test_metrics.get('macro_auc_ovr'))} ECE {format_metric(test_metrics.get('ece'))}"
         )
     else:
-        print(f"Best epoch {best_epoch} | val acc {val_metrics['accuracy']:.4f} macroF1 {val_metrics['macro_f1']:.4f}")
+        print(
+            f"Best epoch {best_epoch} | val acc {val_metrics['accuracy']:.4f} "
+            f"macroF1 {val_metrics['macro_f1']:.4f} macroAUC {format_metric(val_metrics.get('macro_auc_ovr'))} "
+            f"ECE {format_metric(val_metrics.get('ece'))}"
+        )
 
     print(f"Artifacts saved to {output_dir}")
 

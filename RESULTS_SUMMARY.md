@@ -8,6 +8,8 @@ DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experime
 
 The current reproducible script now also includes `simple_cnn_aug_ce` as an augmentation ablation for the baseline. Re-run the script on a full training machine before adding that row to the formal results table.
 
+Newer training/evaluation code also records one-vs-rest AUC and calibration metrics (`ece`, `mce`, `nll`, `brier_score`). Existing result rows should be regenerated or re-evaluated before comparing those fields.
+
 ## Main Results
 
 | Run | Model | Loss | Augmentation | Best Epoch | Test Accuracy | Test Macro F1 | Test Weighted F1 |

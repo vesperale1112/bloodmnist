@@ -65,6 +65,11 @@ def main() -> None:
                 "test_accuracy": metrics.get("accuracy"),
                 "test_macro_f1": metrics.get("macro_f1"),
                 "test_weighted_f1": metrics.get("weighted_f1"),
+                "test_macro_auc_ovr": metrics.get("macro_auc_ovr"),
+                "test_weighted_auc_ovr": metrics.get("weighted_auc_ovr"),
+                "test_ece": metrics.get("ece"),
+                "test_nll": metrics.get("nll"),
+                "test_brier_score": metrics.get("brier_score"),
             }
         )
 
@@ -76,7 +81,11 @@ def main() -> None:
 
     plot_df = df.melt(
         id_vars=["run_name"],
-        value_vars=["test_accuracy", "test_macro_f1", "test_weighted_f1"],
+        value_vars=[
+            metric
+            for metric in ["test_accuracy", "test_macro_f1", "test_weighted_f1", "test_macro_auc_ovr"]
+            if metric in df.columns and df[metric].notna().any()
+        ],
         var_name="metric",
         value_name="score",
     )

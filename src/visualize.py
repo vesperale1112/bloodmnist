@@ -103,6 +103,42 @@ def plot_confusion_matrix(
     plt.close()
 
 
+def plot_reliability_diagram(calibration_bins: list[dict[str, Any]], output_path: str | Path) -> None:
+    df = pd.DataFrame(calibration_bins)
+    if df.empty:
+        return
+
+    bin_width = float(df["confidence_max"].iloc[0] - df["confidence_min"].iloc[0])
+    centers = (df["confidence_min"] + df["confidence_max"]) / 2
+    accuracy = df["accuracy"].fillna(0.0).astype(float)
+    confidence = df["confidence"].fillna(centers).astype(float)
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.bar(
+        centers,
+        accuracy,
+        width=bin_width * 0.9,
+        align="center",
+        alpha=0.75,
+        edgecolor="black",
+        label="Accuracy",
+    )
+    ax.plot([0, 1], [0, 1], color="black", linestyle="--", linewidth=1.2, label="Perfect calibration")
+    valid = df["count"] > 0
+    ax.scatter(confidence[valid], accuracy[valid], color="#d62728", s=28, zorder=3, label="Non-empty bins")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_xlabel("Confidence")
+    ax.set_ylabel("Accuracy")
+    ax.set_title("Reliability diagram")
+    ax.legend(loc="upper left")
+    ax.grid(alpha=0.2)
+    plt.tight_layout()
+    ensure_dir(Path(output_path).parent)
+    plt.savefig(output_path, dpi=220)
+    plt.close(fig)
+
+
 def save_sample_grid(
     images: np.ndarray,
     labels: np.ndarray,
@@ -153,4 +189,3 @@ def save_misclassified_examples(
     ensure_dir(Path(output_path).parent)
     plt.savefig(output_path, dpi=220)
     plt.close(fig)
-
