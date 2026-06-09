@@ -115,7 +115,7 @@ class_weight[c] = total_train_samples / (num_classes * train_count[c])
 
 ### 3.2 模型实现
 
-模型定义集中在 `src/models.py`，当前正式结果使用了三类模型：
+模型定义集中在 `src/models.py`。当前五组正式实验基于三类模型架构：
 
 - `SimpleCNN`：小型 baseline CNN。
 - `ImprovedCNN`：更深的 CNN，加入 BatchNorm、Dropout2d、Dropout 和 global average pooling。
@@ -153,6 +153,8 @@ class_weight[c] = total_train_samples / (num_classes * train_count[c])
 
 - `outputs/summary/tables/experiment_comparison.csv`
 - `outputs/summary/figures/experiment_comparison.png`
+
+如果某个 run 下存在 `eval_test/test_metrics.json`，summary 会优先使用这份独立重评估指标；否则才回退到训练阶段写出的 `metrics/test_metrics.json`。因此刷新 AUC/ECE/calibration 后，应先运行 `scripts/evaluate_checkpoints.sh`，再运行 `scripts/summarize_results.sh`。
 
 错误样例脚本是 `src/error_visuals.py`。它会读取各模型 checkpoint，在测试集上生成高置信度错误样例和主要混淆类别样例：
 
@@ -257,7 +259,7 @@ simple_cnn_aug_ce:
 
 ### 4.3 实验 3：`improved_cnn_ce`
 
-目的：验证更深 CNN 结构和训练增强是否能比 baseline 更好。
+目的：在已经有 SimpleCNN + augmentation 消融的基础上，验证更深 CNN 结构、BatchNorm、Dropout 和 global pooling 是否能进一步提升性能。
 
 运行命令：
 
@@ -334,7 +336,8 @@ Linear(128 -> 8)
 报告中怎么解释：
 
 - 它是项目中的主力 CNN 模型。
-- 它和 `simple_cnn_ce` 的对比可以说明模型结构与增强策略带来的提升。
+- 它和 `simple_cnn_aug_ce` 的对比更适合说明网络结构改进带来的提升。
+- 它和 `simple_cnn_ce` 的对比可以说明结构改进与训练增强叠加后的整体收益。
 - 它和 `improved_cnn_weighted_ce` 的对比可以单独分析类别加权损失的影响。
 
 ### 4.4 实验 4：`improved_cnn_weighted_ce`
@@ -557,9 +560,9 @@ ResNet18Light 的测试集逐类 F1：
 
 - `outputs/runs/*/figures/training_curves.png`
 - `outputs/runs/*/figures/test_misclassified_examples.png`
-- `outputs/runs/*/figures/test_reliability_diagram.png`
-- `outputs/runs/*/tables/test_calibration_bins.csv`
-- `outputs/runs/*/metrics/test_metrics.json` 中的 `macro_auc_ovr`、`weighted_auc_ovr`、`ece`、`mce`、`nll`、`brier_score`
+- `outputs/runs/*/eval_test/figures/test_reliability_diagram.png`
+- `outputs/runs/*/eval_test/tables/test_calibration_bins.csv`
+- `outputs/runs/*/eval_test/test_metrics.json` 中的 `macro_auc_ovr`、`weighted_auc_ovr`、`ece`、`mce`、`nll`、`brier_score`
 - `outputs/summary/error_examples/test_model_error_overview.png`
 - `outputs/summary/error_examples/*_test_high_confidence_errors.png`
 - `outputs/summary/error_examples/*_test_top_confusion_pairs.png`
@@ -601,10 +604,10 @@ bash scripts/smoke_test.sh
 # 数据统计和样本图
 bash scripts/analyze_data.sh
 
-# 新增 SimpleCNN + augmentation 消融实验
+# 如需刷新 SimpleCNN + augmentation 消融实验
 DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_simple_cnn_aug.sh
 
-# 给已有 checkpoint 补 AUC/ECE/calibration 输出
+# 基于已有 checkpoint 重新生成 AUC/ECE/calibration 输出
 DEVICE=cuda NUM_WORKERS=4 bash scripts/evaluate_checkpoints.sh
 
 # 重新汇总结果表和对比图
@@ -638,7 +641,7 @@ DEVICE=auto NUM_WORKERS=0 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experime
 3. `improved_cnn_ce`
 4. `improved_cnn_weighted_ce`
 
-其中 `simple_cnn_aug_ce` 是新增的增强消融实验，用来单独验证训练增强对 SimpleCNN baseline 的影响。注意：该脚本仍不自动跑 `resnet18_compare`。
+其中 `simple_cnn_aug_ce` 是增强消融实验，用来单独验证训练增强对 SimpleCNN baseline 的影响。注意：该脚本仍不自动跑 `resnet18_compare`。
 
 ### 8.5 ResNet18 怎么处理
 

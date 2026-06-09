@@ -34,8 +34,8 @@
 简要结论：
 
 - ResNet18Light 是当前仓库中的最佳模型。
-- ImprovedCNN 明显优于 SimpleCNN，说明更深结构、BatchNorm、Dropout、global pooling 和训练增强有效。
 - `simple_cnn_aug_ce` 相比 `simple_cnn_ce` 提升了 test accuracy 和 macro F1，说明单独加入训练增强对 baseline 有稳定正向作用。
+- ImprovedCNN 相比 `simple_cnn_aug_ce` 进一步提升，说明更深结构、BatchNorm、Dropout 和 global pooling 在训练增强之外继续带来收益。
 - 在 ImprovedCNN 内部，weighted CE 的 accuracy 和 macro F1 均略高于普通 CE，更适合类别不均衡讨论。
 - SimpleCNN 是必要 baseline，SimpleCNN + augmentation 是增强消融，用来支撑模型改进是否有效的对比。
 
@@ -66,14 +66,17 @@
 - `outputs/summary/figures/experiment_comparison.png`
 - `outputs/runs/*/figures/training_curves.png`
 - `outputs/runs/*/figures/test_confusion_matrix.png`
-- `outputs/runs/*/figures/test_reliability_diagram.png`
 - `outputs/runs/*/figures/test_misclassified_examples.png`
 - `outputs/runs/*/tables/test_per_class_metrics.csv`
-- `outputs/runs/*/tables/test_calibration_bins.csv`
+- `outputs/runs/*/eval_test/test_metrics.json`
+- `outputs/runs/*/eval_test/figures/test_reliability_diagram.png`
+- `outputs/runs/*/eval_test/tables/test_calibration_bins.csv`
 - `outputs/summary/error_examples/test_model_error_overview.png`
 - `outputs/summary/error_examples/*_test_top_confusion_pairs.png`
 
 ## 运行方式
+
+当前仓库已经保存五组正式结果。下面命令主要用于重新复现、刷新某一组实验，或在已有 checkpoint 基础上重新生成新指标和汇总图表。
 
 安装依赖：
 
@@ -93,10 +96,10 @@ bash scripts/smoke_test.sh
 # 数据统计和样本图
 bash scripts/analyze_data.sh
 
-# 单独跑新增的 SimpleCNN + augmentation 消融
+# 如需刷新 SimpleCNN + augmentation 消融
 DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_simple_cnn_aug.sh
 
-# 给已有 checkpoint 补 AUC/ECE/calibration 输出
+# 基于已有 checkpoint 重新生成 AUC/ECE/calibration 输出
 DEVICE=cuda NUM_WORKERS=4 bash scripts/evaluate_checkpoints.sh
 
 # 重新汇总结果表和对比图
@@ -125,7 +128,9 @@ DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experime
 bash scripts/run_resnet18.sh
 ```
 
-重新训练或重新评估后，`test_metrics.json` 会包含 `macro_auc_ovr`、`weighted_auc_ovr`、`ece`、`mce`、`nll` 和 `brier_score`。逐类表会包含 `auc_ovr`，calibration bin 表和 reliability diagram 会输出到每个 run 的 `tables/` 和 `figures/` 目录。
+重新训练或重新评估后，`test_metrics.json` 会包含 `macro_auc_ovr`、`weighted_auc_ovr`、`ece`、`mce`、`nll` 和 `brier_score`。当前推荐以每个 run 的 `eval_test/` 目录作为 AUC/ECE/calibration、reliability diagram 和 calibration bin 表的统一来源。
+
+当前 summary 以 `outputs/runs/*/eval_test/test_metrics.json` 作为优先指标来源；如果某个 run 没有 `eval_test`，才回退到训练阶段写出的 `metrics/test_metrics.json`。
 
 生成额外错误样例图：
 
