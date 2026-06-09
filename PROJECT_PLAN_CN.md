@@ -529,8 +529,10 @@ ResNet18Light 的测试集逐类 F1：
 ### 8.1 安装依赖
 
 ```bash
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
+
+如果目标电脑上的 Python 解释器路径不同，可以在运行脚本时设置 `PYTHON=/path/to/python`。
 
 ### 8.2 快速检查
 
@@ -540,7 +542,7 @@ bash scripts/smoke_test.sh
 
 这个脚本会生成 `outputs/smoke_dataset/` 和一个 `smoke_simple_cnn` run，用来检查数据读取、训练、评估和图像导出是否正常。
 
-### 8.3 运行默认三组 CNN 实验
+### 8.3 运行默认 CNN 主线和增强消融实验
 
 ```bash
 DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experiments.sh
@@ -552,12 +554,19 @@ DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experime
 DEVICE=auto NUM_WORKERS=0 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experiments.sh
 ```
 
-注意：`scripts/run_all_experiments.sh` 当前默认只跑三组 CNN 主线实验，不自动跑 `resnet18_compare`。
+当前 `scripts/run_all_experiments.sh` 默认运行：
+
+1. `simple_cnn_ce`
+2. `simple_cnn_aug_ce`
+3. `improved_cnn_ce`
+4. `improved_cnn_weighted_ce`
+
+其中 `simple_cnn_aug_ce` 是新增的增强消融实验，用来单独验证训练增强对 SimpleCNN baseline 的影响。注意：该脚本仍不自动跑 `resnet18_compare`。
 
 ### 8.4 单独运行 ResNet18 对照实验
 
 ```bash
-python -m src.train \
+python3 -m src.train \
   --model resnet18 \
   --loss ce \
   --augment \
@@ -571,13 +580,13 @@ python -m src.train \
 ### 8.5 重新汇总结果
 
 ```bash
-python -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summary
+python3 -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summary
 ```
 
 ### 8.6 生成错误样例图
 
 ```bash
-python -m src.error_visuals --device cpu --num-workers 0
+python3 -m src.error_visuals --device cpu --num-workers 0
 ```
 
 ## 9. 局限性与后续改进

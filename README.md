@@ -74,8 +74,10 @@
 安装依赖：
 
 ```bash
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
+
+如果另一台电脑上的 Python 不叫 `python3`，运行脚本时可以通过 `PYTHON=/path/to/python` 指定解释器。
 
 快速检查流程：
 
@@ -83,7 +85,7 @@ pip install -r requirements.txt
 bash scripts/smoke_test.sh
 ```
 
-运行默认三组 CNN 主线实验：
+运行默认 CNN 主线和增强消融实验：
 
 ```bash
 DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experiments.sh
@@ -92,13 +94,16 @@ DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experime
 默认脚本会运行：
 
 1. `simple_cnn_ce`
-2. `improved_cnn_ce`
-3. `improved_cnn_weighted_ce`
+2. `simple_cnn_aug_ce`
+3. `improved_cnn_ce`
+4. `improved_cnn_weighted_ce`
+
+其中 `simple_cnn_aug_ce` 只在 SimpleCNN baseline 上打开训练增强，用来把“augmentation 的影响”和“ImprovedCNN 结构本身的影响”分开讨论。
 
 单独运行当前仓库已有的 ResNet18 对照实验：
 
 ```bash
-python -m src.train \
+python3 -m src.train \
   --model resnet18 \
   --loss ce \
   --augment \
@@ -112,13 +117,13 @@ python -m src.train \
 重新生成实验汇总：
 
 ```bash
-python -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summary
+python3 -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summary
 ```
 
 生成额外错误样例图：
 
 ```bash
-python -m src.error_visuals --device cpu --num-workers 0
+python3 -m src.error_visuals --device cpu --num-workers 0
 ```
 
 ## 写报告时的主线

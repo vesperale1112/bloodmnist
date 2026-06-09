@@ -6,10 +6,11 @@ EPOCHS=${EPOCHS:-50}
 BATCH_SIZE=${BATCH_SIZE:-128}
 DEVICE=${DEVICE:-auto}
 NUM_WORKERS=${NUM_WORKERS:-2}
+PYTHON=${PYTHON:-python3}
 
-python -m src.analyze_data --data "$DATA" --output-dir outputs/dataset
+"$PYTHON" -m src.analyze_data --data "$DATA" --output-dir outputs/dataset
 
-python -m src.train \
+"$PYTHON" -m src.train \
   --data "$DATA" \
   --model simple_cnn \
   --loss ce \
@@ -19,7 +20,18 @@ python -m src.train \
   --device "$DEVICE" \
   --num-workers "$NUM_WORKERS"
 
-python -m src.train \
+"$PYTHON" -m src.train \
+  --data "$DATA" \
+  --model simple_cnn \
+  --loss ce \
+  --augment \
+  --run-name simple_cnn_aug_ce \
+  --epochs "$EPOCHS" \
+  --batch-size "$BATCH_SIZE" \
+  --device "$DEVICE" \
+  --num-workers "$NUM_WORKERS"
+
+"$PYTHON" -m src.train \
   --data "$DATA" \
   --model improved_cnn \
   --loss ce \
@@ -30,7 +42,7 @@ python -m src.train \
   --device "$DEVICE" \
   --num-workers "$NUM_WORKERS"
 
-python -m src.train \
+"$PYTHON" -m src.train \
   --data "$DATA" \
   --model improved_cnn \
   --loss weighted_ce \
@@ -41,5 +53,4 @@ python -m src.train \
   --device "$DEVICE" \
   --num-workers "$NUM_WORKERS"
 
-python -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summary
-
+"$PYTHON" -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summary
