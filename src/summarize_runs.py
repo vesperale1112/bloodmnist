@@ -35,23 +35,10 @@ def read_json(path: Path) -> dict:
 
 
 def load_test_metrics(run_dir: Path) -> dict:
-    metrics = read_json(run_dir / "metrics" / "test_metrics.json")
     eval_metrics_path = run_dir / "eval_test" / "test_metrics.json"
-    if not eval_metrics_path.exists():
-        return metrics
-
-    eval_metrics = read_json(eval_metrics_path)
-    for key in (
-        "macro_auc_ovr",
-        "weighted_auc_ovr",
-        "ece",
-        "mce",
-        "nll",
-        "brier_score",
-    ):
-        if eval_metrics.get(key) is not None:
-            metrics[key] = eval_metrics[key]
-    return metrics
+    if eval_metrics_path.exists():
+        return read_json(eval_metrics_path)
+    return read_json(run_dir / "metrics" / "test_metrics.json")
 
 
 def main() -> None:

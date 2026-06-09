@@ -1,0 +1,5 @@
+{
+  "best_epoch": 27,
+  "best_val_macro_f1": 0.9558260537562362,
+  "best_checkpoint": "outputs/runs/simple_cnn_aug_ce/checkpoints/best.pt"
+}

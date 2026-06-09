@@ -1,0 +1,321 @@
+{
+  "accuracy": 0.9505992399883075,
+  "macro_f1": 0.9465901018117122,
+  "weighted_f1": 0.9507848759495079,
+  "per_class": [
+    {
+      "class_id": 0,
+      "class_name": "basophil",
+      "precision": 0.9613733905579399,
+      "recall": 0.9180327868852459,
+      "f1": 0.939203354297694,
+      "auc_ovr": 0.9972122891479228,
+      "support": 244
+    },
+    {
+      "class_id": 1,
+      "class_name": "eosinophil",
+      "precision": 0.9903691813804173,
+      "recall": 0.9887820512820513,
+      "f1": 0.9895749799518845,
+      "auc_ovr": 0.9995940591109522,
+      "support": 624
+    },
+    {
+      "class_id": 2,
+      "class_name": "erythroblast",
+      "precision": 0.9700996677740864,
+      "recall": 0.9389067524115756,
+      "f1": 0.954248366013072,
+      "auc_ovr": 0.9971309229639892,
+      "support": 311
+    },
+    {
+      "class_id": 3,
+      "class_name": "immature_granulocyte",
+      "precision": 0.8515007898894155,
+      "recall": 0.9309153713298791,
+      "f1": 0.8894389438943895,
+      "auc_ovr": 0.9912933191858126,
+      "support": 579
+    },
+    {
+      "class_id": 4,
+      "class_name": "lymphocyte",
+      "precision": 0.9578059071729957,
+      "recall": 0.934156378600823,
+      "f1": 0.9458333333333333,
+      "auc_ovr": 0.9988604785472137,
+      "support": 243
+    },
+    {
+      "class_id": 5,
+      "class_name": "monocyte",
+      "precision": 0.9484126984126984,
+      "recall": 0.8415492957746479,
+      "f1": 0.8917910447761194,
+      "auc_ovr": 0.9960298930978283,
+      "support": 284
+    },
+    {
+      "class_id": 6,
+      "class_name": "neutrophil",
+      "precision": 0.9583333333333334,
+      "recall": 0.9669669669669669,
+      "f1": 0.9626307922272048,
+      "auc_ovr": 0.9978763700179307,
+      "support": 666
+    },
+    {
+      "class_id": 7,
+      "class_name": "platelet",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc_ovr": 1.0,
+      "support": 470
+    }
+  ],
+  "confusion_matrix": [
+    [
+      224,
+      1,
+      0,
+      12,
+      2,
+      3,
+      2,
+      0
+    ],
+    [
+      2,
+      617,
+      0,
+      3,
+      0,
+      0,
+      2,
+      0
+    ],
+    [
+      0,
+      3,
+      292,
+      11,
+      2,
+      0,
+      3,
+      0
+    ],
+    [
+      6,
+      1,
+      2,
+      539,
+      2,
+      9,
+      20,
+      0
+    ],
+    [
+      0,
+      0,
+      5,
+      10,
+      227,
+      1,
+      0,
+      0
+    ],
+    [
+      1,
+      0,
+      0,
+      40,
+      3,
+      239,
+      1,
+      0
+    ],
+    [
+      0,
+      1,
+      2,
+      18,
+      1,
+      0,
+      644,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      470
+    ]
+  ],
+  "macro_auc_ovr": 0.9972496665089562,
+  "weighted_auc_ovr": 0.9971687485081587,
+  "nll": 0.15104785574642776,
+  "brier_score": 0.07303543305568987,
+  "ece": 0.008648109347682387,
+  "mce": 0.12419206976424019,
+  "calibration_n_bins": 15,
+  "calibration_bins": [
+    {
+      "bin_id": 0,
+      "confidence_min": 0.0,
+      "confidence_max": 0.06666666666666667,
+      "count": 0,
+      "fraction": 0.0,
+      "accuracy": null,
+      "confidence": null,
+      "gap": null
+    },
+    {
+      "bin_id": 1,
+      "confidence_min": 0.06666666666666667,
+      "confidence_max": 0.13333333333333333,
+      "count": 0,
+      "fraction": 0.0,
+      "accuracy": null,
+      "confidence": null,
+      "gap": null
+    },
+    {
+      "bin_id": 2,
+      "confidence_min": 0.13333333333333333,
+      "confidence_max": 0.2,
+      "count": 0,
+      "fraction": 0.0,
+      "accuracy": null,
+      "confidence": null,
+      "gap": null
+    },
+    {
+      "bin_id": 3,
+      "confidence_min": 0.2,
+      "confidence_max": 0.26666666666666666,
+      "count": 0,
+      "fraction": 0.0,
+      "accuracy": null,
+      "confidence": null,
+      "gap": null
+    },
+    {
+      "bin_id": 4,
+      "confidence_min": 0.26666666666666666,
+      "confidence_max": 0.3333333333333333,
+      "count": 0,
+      "fraction": 0.0,
+      "accuracy": null,
+      "confidence": null,
+      "gap": null
+    },
+    {
+      "bin_id": 5,
+      "confidence_min": 0.3333333333333333,
+      "confidence_max": 0.4,
+      "count": 6,
+      "fraction": 0.0017538731365097924,
+      "accuracy": 0.5,
+      "confidence": 0.3758079302357598,
+      "gap": 0.12419206976424019
+    },
+    {
+      "bin_id": 6,
+      "confidence_min": 0.4,
+      "confidence_max": 0.4666666666666667,
+      "count": 12,
+      "fraction": 0.0035077462730195848,
+      "accuracy": 0.4166666666666667,
+      "confidence": 0.434663845671738,
+      "gap": 0.017997179005071307
+    },
+    {
+      "bin_id": 7,
+      "confidence_min": 0.4666666666666667,
+      "confidence_max": 0.5333333333333333,
+      "count": 35,
+      "fraction": 0.010230926629640456,
+      "accuracy": 0.5142857142857142,
+      "confidence": 0.5050388030274952,
+      "gap": 0.009246911258219082
+    },
+    {
+      "bin_id": 8,
+      "confidence_min": 0.5333333333333333,
+      "confidence_max": 0.6,
+      "count": 56,
+      "fraction": 0.01636948260742473,
+      "accuracy": 0.48214285714285715,
+      "confidence": 0.5700726601747463,
+      "gap": 0.08792980303188919
+    },
+    {
+      "bin_id": 9,
+      "confidence_min": 0.6,
+      "confidence_max": 0.6666666666666666,
+      "count": 44,
+      "fraction": 0.012861736334405145,
+      "accuracy": 0.6136363636363636,
+      "confidence": 0.6314260399379994,
+      "gap": 0.01778967630163575
+    },
+    {
+      "bin_id": 10,
+      "confidence_min": 0.6666666666666666,
+      "confidence_max": 0.7333333333333333,
+      "count": 44,
+      "fraction": 0.012861736334405145,
+      "accuracy": 0.7272727272727273,
+      "confidence": 0.6977998042379396,
+      "gap": 0.029472923034787657
+    },
+    {
+      "bin_id": 11,
+      "confidence_min": 0.7333333333333333,
+      "confidence_max": 0.8,
+      "count": 67,
+      "fraction": 0.019584916691026015,
+      "accuracy": 0.6716417910447762,
+      "confidence": 0.7687563685435015,
+      "gap": 0.09711457749872532
+    },
+    {
+      "bin_id": 12,
+      "confidence_min": 0.8,
+      "confidence_max": 0.8666666666666667,
+      "count": 92,
+      "fraction": 0.026892721426483485,
+      "accuracy": 0.782608695652174,
+      "confidence": 0.8325481786114585,
+      "gap": 0.04993948295928452
+    },
+    {
+      "bin_id": 13,
+      "confidence_min": 0.8666666666666667,
+      "confidence_max": 0.9333333333333333,
+      "count": 159,
+      "fraction": 0.0464776381175095,
+      "accuracy": 0.8930817610062893,
+      "confidence": 0.9043826480213991,
+      "gap": 0.011300887015109784
+    },
+    {
+      "bin_id": 14,
+      "confidence_min": 0.9333333333333333,
+      "confidence_max": 1.0,
+      "count": 2906,
+      "fraction": 0.8494592224495762,
+      "accuracy": 0.991397109428768,
+      "confidence": 0.9942872842797927,
+      "gap": 0.0028901748510247183
+    }
+  ],
+  "loss": 0.15381194991096353
+}

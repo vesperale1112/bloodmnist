@@ -7,7 +7,7 @@
 - 对 BloodMNIST 数据集做了类别分布统计、样本展示和 train mean/std 计算。
 - 实现了纯 PyTorch 数据管线，包括标准化、训练增强、class weights 和 DataLoader。
 - 实现并训练了 SimpleCNN、ImprovedCNN 和 ResNet18Light。
-- 完成了三组 CNN 主线实验和一组额外 ResNet18 对照实验。
+- 完成了四组 CNN 主线/消融实验和一组额外 ResNet18 对照实验。
 - 保存了每组实验的 checkpoint、训练曲线、测试指标、逐类指标、AUC、ECE/calibration、混淆矩阵和错误分类样例。
 - 生成了汇总对比表、对比图和高置信度错误样例图，便于写报告和做 PPT。
 
@@ -26,16 +26,18 @@
 | run_name | 模型 | 损失函数 | 训练增强 | 参数量 | Best Epoch | Test Accuracy | Test Macro F1 |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
 | `resnet18_compare` | ResNet18Light | CE | yes | 11,172,936 | 42 | 0.9702 | 0.9687 |
-| `improved_cnn_weighted_ce` | ImprovedCNN | weighted CE | yes | 305,000 | 33 | 0.9649 | 0.9629 |
+| `improved_cnn_weighted_ce` | ImprovedCNN | weighted CE | yes | 305,000 | 33 | 0.9652 | 0.9632 |
 | `improved_cnn_ce` | ImprovedCNN | CE | yes | 305,000 | 41 | 0.9649 | 0.9614 |
+| `simple_cnn_aug_ce` | SimpleCNN | CE | yes | 421,960 | 27 | 0.9506 | 0.9466 |
 | `simple_cnn_ce` | SimpleCNN | CE | no | 421,960 | 46 | 0.9456 | 0.9402 |
 
 简要结论：
 
 - ResNet18Light 是当前仓库中的最佳模型。
 - ImprovedCNN 明显优于 SimpleCNN，说明更深结构、BatchNorm、Dropout、global pooling 和训练增强有效。
-- 在 ImprovedCNN 内部，weighted CE 与普通 CE 的 accuracy 相同，但 macro F1 更高，更适合类别不均衡讨论。
-- SimpleCNN 是必要 baseline，用来支撑模型改进是否有效的对比。
+- `simple_cnn_aug_ce` 相比 `simple_cnn_ce` 提升了 test accuracy 和 macro F1，说明单独加入训练增强对 baseline 有稳定正向作用。
+- 在 ImprovedCNN 内部，weighted CE 的 accuracy 和 macro F1 均略高于普通 CE，更适合类别不均衡讨论。
+- SimpleCNN 是必要 baseline，SimpleCNN + augmentation 是增强消融，用来支撑模型改进是否有效的对比。
 
 更详细的中文项目说明见 `PROJECT_PLAN_CN.md`。
 
@@ -137,7 +139,8 @@ bash scripts/generate_error_visuals.sh
 
 1. 用类别分布说明任务存在 class imbalance。
 2. 用 SimpleCNN 作为 baseline。
-3. 用 ImprovedCNN 说明更深结构、BatchNorm、Dropout 和训练增强带来提升。
-4. 用 ImprovedCNN + weighted CE 单独讨论类别不均衡处理。
-5. 用 ResNet18Light 展示当前最佳性能，同时讨论参数量和复杂度。
-6. 用 confusion matrix 和 error examples 分析 `immature_granulocyte`、`monocyte`、`basophil` 等容易混淆的类别。
+3. 用 SimpleCNN + augmentation 单独说明训练增强对 baseline 的影响。
+4. 用 ImprovedCNN 说明更深结构、BatchNorm、Dropout 和 global pooling 带来进一步提升。
+5. 用 ImprovedCNN + weighted CE 单独讨论类别不均衡处理。
+6. 用 ResNet18Light 展示当前最佳性能，同时讨论参数量和复杂度。
+7. 用 confusion matrix 和 error examples 分析 `immature_granulocyte`、`monocyte`、`basophil` 等容易混淆的类别。

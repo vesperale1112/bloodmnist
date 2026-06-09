@@ -1,0 +1,323 @@
+{
+  "accuracy": 0.9649225372698041,
+  "macro_f1": 0.9613919876934038,
+  "weighted_f1": 0.965090117886447,
+  "per_class": [
+    {
+      "class_id": 0,
+      "class_name": "basophil",
+      "precision": 0.9382716049382716,
+      "recall": 0.9344262295081968,
+      "f1": 0.9363449691991786,
+      "auc_ovr": 0.9989731523191794,
+      "support": 244
+    },
+    {
+      "class_id": 1,
+      "class_name": "eosinophil",
+      "precision": 0.9983766233766234,
+      "recall": 0.9855769230769231,
+      "f1": 0.9919354838709677,
+      "auc_ovr": 0.999627004207805,
+      "support": 624
+    },
+    {
+      "class_id": 2,
+      "class_name": "erythroblast",
+      "precision": 0.9898305084745763,
+      "recall": 0.9389067524115756,
+      "f1": 0.9636963696369637,
+      "auc_ovr": 0.9994768457728932,
+      "support": 311
+    },
+    {
+      "class_id": 3,
+      "class_name": "immature_granulocyte",
+      "precision": 0.9090909090909091,
+      "recall": 0.9326424870466321,
+      "f1": 0.9207161125319693,
+      "auc_ovr": 0.9938463146559321,
+      "support": 579
+    },
+    {
+      "class_id": 4,
+      "class_name": "lymphocyte",
+      "precision": 0.952,
+      "recall": 0.9794238683127572,
+      "f1": 0.9655172413793104,
+      "auc_ovr": 0.9995972827592994,
+      "support": 243
+    },
+    {
+      "class_id": 5,
+      "class_name": "monocyte",
+      "precision": 0.9215017064846417,
+      "recall": 0.9507042253521126,
+      "f1": 0.9358752166377816,
+      "auc_ovr": 0.9969379554342311,
+      "support": 284
+    },
+    {
+      "class_id": 6,
+      "class_name": "neutrophil",
+      "precision": 0.9833080424886191,
+      "recall": 0.972972972972973,
+      "f1": 0.9781132075471698,
+      "auc_ovr": 0.9979507638309816,
+      "support": 666
+    },
+    {
+      "class_id": 7,
+      "class_name": "platelet",
+      "precision": 0.9978768577494692,
+      "recall": 1.0,
+      "f1": 0.9989373007438895,
+      "auc_ovr": 1.0,
+      "support": 470
+    }
+  ],
+  "confusion_matrix": [
+    [
+      228,
+      0,
+      0,
+      11,
+      2,
+      3,
+      0,
+      0
+    ],
+    [
+      5,
+      615,
+      0,
+      1,
+      0,
+      1,
+      2,
+      0
+    ],
+    [
+      0,
+      0,
+      292,
+      12,
+      3,
+      0,
+      3,
+      1
+    ],
+    [
+      9,
+      0,
+      2,
+      540,
+      4,
+      18,
+      6,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      3,
+      238,
+      1,
+      0,
+      0
+    ],
+    [
+      1,
+      0,
+      0,
+      10,
+      3,
+      270,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      0,
+      17,
+      0,
+      0,
+      648,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      470
+    ]
+  ],
+  "macro_auc_ovr": 0.9983011648725402,
+  "weighted_auc_ovr": 0.9980879107798801,
+  "nll": 0.10683147030218937,
+  "brier_score": 0.052069233971865664,
+  "ece": 0.007863768726602329,
+  "mce": 0.3670810208932151,
+  "calibration_n_bins": 15,
+  "calibration_bins": [
+    {
+      "bin_id": 0,
+      "confidence_min": 0.0,
+      "confidence_max": 0.06666666666666667,
+      "count": 0,
+      "fraction": 0.0,
+      "accuracy": null,
+      "confidence": null,
+      "gap": null
+    },
+    {
+      "bin_id": 1,
+      "confidence_min": 0.06666666666666667,
+      "confidence_max": 0.13333333333333333,
+      "count": 0,
+      "fraction": 0.0,
+      "accuracy": null,
+      "confidence": null,
+      "gap": null
+    },
+    {
+      "bin_id": 2,
+      "confidence_min": 0.13333333333333333,
+      "confidence_max": 0.2,
+      "count": 0,
+      "fraction": 0.0,
+      "accuracy": null,
+      "confidence": null,
+      "gap": null
+    },
+    {
+      "bin_id": 3,
+      "confidence_min": 0.2,
+      "confidence_max": 0.26666666666666666,
+      "count": 0,
+      "fraction": 0.0,
+      "accuracy": null,
+      "confidence": null,
+      "gap": null
+    },
+    {
+      "bin_id": 4,
+      "confidence_min": 0.26666666666666666,
+      "confidence_max": 0.3333333333333333,
+      "count": 1,
+      "fraction": 0.00029231218941829873,
+      "accuracy": 0.0,
+      "confidence": 0.29016291678905887,
+      "gap": 0.29016291678905887
+    },
+    {
+      "bin_id": 5,
+      "confidence_min": 0.3333333333333333,
+      "confidence_max": 0.4,
+      "count": 3,
+      "fraction": 0.0008769365682548962,
+      "accuracy": 0.0,
+      "confidence": 0.3670810208932151,
+      "gap": 0.3670810208932151
+    },
+    {
+      "bin_id": 6,
+      "confidence_min": 0.4,
+      "confidence_max": 0.4666666666666667,
+      "count": 6,
+      "fraction": 0.0017538731365097924,
+      "accuracy": 0.5,
+      "confidence": 0.4319298802899682,
+      "gap": 0.0680701197100318
+    },
+    {
+      "bin_id": 7,
+      "confidence_min": 0.4666666666666667,
+      "confidence_max": 0.5333333333333333,
+      "count": 28,
+      "fraction": 0.008184741303712365,
+      "accuracy": 0.4642857142857143,
+      "confidence": 0.5044137968639291,
+      "gap": 0.04012808257821476
+    },
+    {
+      "bin_id": 8,
+      "confidence_min": 0.5333333333333333,
+      "confidence_max": 0.6,
+      "count": 36,
+      "fraction": 0.010523238819058756,
+      "accuracy": 0.5277777777777778,
+      "confidence": 0.5661485430596365,
+      "gap": 0.038370765281858676
+    },
+    {
+      "bin_id": 9,
+      "confidence_min": 0.6,
+      "confidence_max": 0.6666666666666666,
+      "count": 42,
+      "fraction": 0.012277111955568546,
+      "accuracy": 0.5714285714285714,
+      "confidence": 0.6299417621409562,
+      "gap": 0.05851319071238481
+    },
+    {
+      "bin_id": 10,
+      "confidence_min": 0.6666666666666666,
+      "confidence_max": 0.7333333333333333,
+      "count": 44,
+      "fraction": 0.012861736334405145,
+      "accuracy": 0.75,
+      "confidence": 0.7045568640153952,
+      "gap": 0.04544313598460481
+    },
+    {
+      "bin_id": 11,
+      "confidence_min": 0.7333333333333333,
+      "confidence_max": 0.8,
+      "count": 51,
+      "fraction": 0.014907921660333235,
+      "accuracy": 0.8431372549019608,
+      "confidence": 0.7650300471587778,
+      "gap": 0.07810720774318303
+    },
+    {
+      "bin_id": 12,
+      "confidence_min": 0.8,
+      "confidence_max": 0.8666666666666667,
+      "count": 68,
+      "fraction": 0.019877228880444315,
+      "accuracy": 0.8676470588235294,
+      "confidence": 0.838723058656225,
+      "gap": 0.028924000167304453
+    },
+    {
+      "bin_id": 13,
+      "confidence_min": 0.8666666666666667,
+      "confidence_max": 0.9333333333333333,
+      "count": 152,
+      "fraction": 0.04443145279158141,
+      "accuracy": 0.9276315789473685,
+      "confidence": 0.9048018730770682,
+      "gap": 0.02282970587030031
+    },
+    {
+      "bin_id": 14,
+      "confidence_min": 0.9333333333333333,
+      "confidence_max": 1.0,
+      "count": 2990,
+      "fraction": 0.8740134463607132,
+      "accuracy": 0.9919732441471572,
+      "confidence": 0.9948895402547937,
+      "gap": 0.0029162961076365512
+    }
+  ],
+  "loss": 0.10683146640505926,
+  "checkpoint": "outputs/runs/improved_cnn_ce/checkpoints/best.pt",
+  "device": "cuda (NVIDIA GeForce RTX 4070 Laptop GPU)"
+}

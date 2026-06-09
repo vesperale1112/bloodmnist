@@ -2,9 +2,10 @@
 
 ## 1. 项目一句话概述
 
-本仓库围绕 `bloodmnist.npz` 完成 BloodMNIST 血细胞图像 8 分类任务。当前项目不只是训练一个模型，而是搭建了一套从数据分析、训练、评估、实验对比到报告素材导出的完整流程，并已经保存了四组正式实验结果：
+本仓库围绕 `bloodmnist.npz` 完成 BloodMNIST 血细胞图像 8 分类任务。当前项目不只是训练一个模型，而是搭建了一套从数据分析、训练、评估、实验对比到报告素材导出的完整流程，并已经保存了五组正式实验结果：
 
 - `simple_cnn_ce`：简单 CNN baseline。
+- `simple_cnn_aug_ce`：简单 CNN + 训练增强，用来做 baseline augmentation 消融。
 - `improved_cnn_ce`：改进 CNN，加训练增强，使用普通交叉熵。
 - `improved_cnn_weighted_ce`：改进 CNN，加训练增强，使用类别加权交叉熵。
 - `resnet18_compare`：额外加入的 ResNet18 对照实验，是当前仓库中效果最好的模型。
@@ -144,7 +145,7 @@ class_weight[c] = total_train_samples / (num_classes * train_count[c])
 - 这样做是因为数据存在类别不均衡，macro F1 更能反映少数类表现。
 - 重新训练或重新评估后，metrics 中会包含 one-vs-rest macro/weighted AUC、ECE、MCE、NLL 和 Brier score。
 - 训练时如果使用 CUDA，会启用 PyTorch AMP autocast 和 GradScaler。
-- `--weighted-sampler` 也在代码中支持，但当前四组正式实验都没有使用 weighted sampler。
+- `--weighted-sampler` 也在代码中支持，但当前五组正式实验都没有使用 weighted sampler。
 
 ### 3.4 结果汇总与错误分析
 
@@ -161,7 +162,7 @@ class_weight[c] = total_train_samples / (num_classes * train_count[c])
 
 这些图适合放在报告的 error analysis 或 limitations 部分。
 
-## 4. 四组实验设计
+## 4. 五组实验设计
 
 ### 4.1 实验 1：`simple_cnn_ce`
 
@@ -212,7 +213,49 @@ Linear(128 -> 8)
 - 它提供后续模型改进的参照。
 - 它的参数量比 ImprovedCNN 更大，但性能更低，说明参数量本身不是关键，更合理的结构、归一化、正则化和增强更重要。
 
-### 4.2 实验 2：`improved_cnn_ce`
+### 4.2 实验 2：`simple_cnn_aug_ce`
+
+目的：在 SimpleCNN 结构和普通 CE 不变的前提下，只打开训练增强，单独验证 augmentation 对 baseline 的影响。
+
+运行命令：
+
+```bash
+python -m src.train --model simple_cnn --loss ce --augment --run-name simple_cnn_aug_ce
+```
+
+配置摘要：
+
+- 模型：`SimpleCNN`
+- 损失函数：普通 `CrossEntropyLoss`
+- 训练增强：开启水平/垂直翻转
+- 参数量：421,960
+- batch size：128
+- epochs：50
+- optimizer：AdamW
+- learning rate：1e-3
+- weight decay：1e-4
+- early stopping patience：8
+- best checkpoint 指标：validation macro F1
+- 输出目录：`outputs/runs/simple_cnn_aug_ce`
+
+设计上的控制变量：
+
+```text
+simple_cnn_ce:
+  SimpleCNN + ordinary CE + no augmentation
+
+simple_cnn_aug_ce:
+  SimpleCNN + ordinary CE + augmentation
+```
+
+报告中怎么解释：
+
+- 这组实验不是更换模型，而是只验证训练增强是否能改善 baseline。
+- 它相对 `simple_cnn_ce` 的 test accuracy 从 0.9456 提升到 0.9506，macro F1 从 0.9402 提升到 0.9466。
+- 它的 ECE 从 0.0287 降到 0.0086，说明增强后的 baseline 置信度校准也更好。
+- 它仍低于 ImprovedCNN，说明单靠 augmentation 有帮助，但更合理的网络结构仍然重要。
+
+### 4.3 实验 3：`improved_cnn_ce`
 
 目的：验证更深 CNN 结构和训练增强是否能比 baseline 更好。
 
@@ -294,7 +337,7 @@ Linear(128 -> 8)
 - 它和 `simple_cnn_ce` 的对比可以说明模型结构与增强策略带来的提升。
 - 它和 `improved_cnn_weighted_ce` 的对比可以单独分析类别加权损失的影响。
 
-### 4.3 实验 3：`improved_cnn_weighted_ce`
+### 4.4 实验 4：`improved_cnn_weighted_ce`
 
 目的：在 ImprovedCNN 结构不变、训练增强不变的前提下，只改变损失函数，专门分析类别不均衡处理是否有帮助。
 
@@ -337,7 +380,7 @@ improved_cnn_weighted_ce:
 - 多数类如 `neutrophil`、`eosinophil` 的权重更低。
 - 如果 accuracy 接近但 macro F1 提升，可以说明类别加权主要改善了类别均衡表现，而不是只提高多数类正确率。
 
-### 4.4 实验 4：`resnet18_compare`
+### 4.5 实验 5：`resnet18_compare`
 
 目的：在手写 CNN 之外，加入一个更强的残差网络对照，判断当前任务是否还能从更深网络结构中获益。
 
@@ -380,7 +423,7 @@ ResNet18Light 的结构特点：
 
 报告中怎么解释：
 
-- ResNet18 是额外加入的强对照，不是原三组 CNN 递进实验的一部分。
+- ResNet18 是额外加入的强对照，不是 CNN baseline/augmentation/ImprovedCNN 递进消融的一部分。
 - 它当前取得了最高 test accuracy 和 test macro F1，可以作为最终性能上限或最佳模型展示。
 - 它的参数量明显大于 ImprovedCNN，因此报告需要同时讨论性能提升和模型复杂度提升。
 - 由于本次是从零训练，不是 ImageNet 迁移学习，所以不要把结果解释成 pretrained transfer learning 的效果。
@@ -394,33 +437,35 @@ ResNet18Light 的结构特点：
 | `resnet18_compare` | ResNet18Light | CE | yes | 11,172,936 | 5e-4 | 1e-3 | 10 | 42 |
 | `improved_cnn_weighted_ce` | ImprovedCNN | weighted CE | yes | 305,000 | 1e-3 | 1e-4 | 8 | 33 |
 | `improved_cnn_ce` | ImprovedCNN | CE | yes | 305,000 | 1e-3 | 1e-4 | 8 | 41 |
+| `simple_cnn_aug_ce` | SimpleCNN | CE | yes | 421,960 | 1e-3 | 1e-4 | 8 | 27 |
 | `simple_cnn_ce` | SimpleCNN | CE | no | 421,960 | 1e-3 | 1e-4 | 8 | 46 |
 
 补充说明：
 
-- 三个 CNN run 的保存配置记录为 `device=cuda`，硬件为 NVIDIA GeForce RTX 4070 Laptop GPU。
+- 四个 CNN run 的保存配置记录为 `device=cuda`，硬件为 NVIDIA GeForce RTX 4070 Laptop GPU。
 - `resnet18_compare` 的保存配置记录为 `device=auto`，实际记录设备为 CPU。
-- 四组实验都使用 `seed=42`。
-- 四组实验都没有使用 weighted sampler。
+- 五组实验都使用 `seed=42`。
+- 五组实验都没有使用 weighted sampler。
 
 ### 5.2 测试集结果
 
 结果来自 `outputs/summary/tables/experiment_comparison.csv`。
 
-| run_name | Test Accuracy | Test Macro F1 | Test Weighted F1 | 测试集错误数 |
-| --- | ---: | ---: | ---: | ---: |
-| `resnet18_compare` | 0.9702 | 0.9687 | 0.9703 | 102 / 3421 |
-| `improved_cnn_weighted_ce` | 0.9649 | 0.9629 | 0.9650 | 120 / 3421 |
-| `improved_cnn_ce` | 0.9649 | 0.9614 | 0.9651 | 120 / 3421 |
-| `simple_cnn_ce` | 0.9456 | 0.9402 | 0.9459 | 186 / 3421 |
+| run_name | Test Accuracy | Test Macro F1 | Test Weighted F1 | Test ECE | 测试集错误数 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `resnet18_compare` | 0.9702 | 0.9687 | 0.9703 | 0.0198 | 102 / 3421 |
+| `improved_cnn_weighted_ce` | 0.9652 | 0.9632 | 0.9653 | 0.0052 | 119 / 3421 |
+| `improved_cnn_ce` | 0.9649 | 0.9614 | 0.9651 | 0.0079 | 120 / 3421 |
+| `simple_cnn_aug_ce` | 0.9506 | 0.9466 | 0.9508 | 0.0086 | 169 / 3421 |
+| `simple_cnn_ce` | 0.9456 | 0.9402 | 0.9459 | 0.0287 | 186 / 3421 |
 
 主要结论：
 
 1. ResNet18Light 当前表现最好，test accuracy 为 0.9702，test macro F1 为 0.9687。
-2. ImprovedCNN 明显优于 SimpleCNN，说明更深结构、BatchNorm、Dropout、global pooling 和训练增强有效。
-3. 在 ImprovedCNN 内部比较时，weighted CE 和普通 CE 的 accuracy 相同，都是 0.9649。
-4. weighted CE 的 macro F1 更高，0.9629 对 0.9614，说明它对类别均衡指标有小幅帮助。
-5. 普通 CE 的 weighted F1 略高，说明在整体样本分布加权的平均表现上，两者差异很小。
+2. `simple_cnn_aug_ce` 明确优于 `simple_cnn_ce`，说明训练增强对 baseline 有正向作用。
+3. ImprovedCNN 明显优于 SimpleCNN + augmentation，说明更深结构、BatchNorm、Dropout 和 global pooling 在增强之外继续带来提升。
+4. 在 ImprovedCNN 内部比较时，weighted CE 的 accuracy、macro F1 和 weighted F1 都略高于普通 CE。
+5. weighted CE 的 macro F1 为 0.9632，对普通 CE 的 0.9614，说明它对类别均衡指标有小幅帮助。
 6. 如果报告要强调 class imbalance，推荐把 `improved_cnn_weighted_ce` 作为类别不均衡处理的主结果；如果报告要展示最高性能，推荐把 `resnet18_compare` 作为最佳模型。
 
 ### 5.3 逐类表现要点
@@ -440,7 +485,7 @@ ResNet18Light 的测试集逐类 F1：
 
 可以重点写的观察：
 
-- `platelet` 在四组实验中都非常容易分类，ResNet18 和 SimpleCNN 都达到 F1=1.0000。
+- `platelet` 在五组实验中都非常容易分类，ResNet18 和 SimpleCNN 都达到 F1=1.0000。
 - `eosinophil` 和 `neutrophil` 整体表现也较强，可能与样本数较多、形态特征较明显有关。
 - `immature_granulocyte` 是比较困难的类别，ResNet18 的 F1 也只有 0.9251，是 ResNet18 中最低的类别 F1。
 - `monocyte` 和 `basophil` 在 baseline 中表现较弱，改进模型和 ResNet18 后有明显提升。
@@ -460,6 +505,7 @@ ResNet18Light 的测试集逐类 F1：
 - `outputs/summary/error_examples/resnet18_compare_test_top_confusion_pairs.png`
 - `outputs/summary/error_examples/improved_cnn_weighted_ce_test_top_confusion_pairs.png`
 - `outputs/summary/error_examples/improved_cnn_ce_test_top_confusion_pairs.png`
+- `outputs/summary/error_examples/simple_cnn_aug_ce_test_top_confusion_pairs.png`
 - `outputs/summary/error_examples/simple_cnn_ce_test_top_confusion_pairs.png`
 
 ## 6. 代码结构与文件职责
@@ -468,7 +514,7 @@ ResNet18Light 的测试集逐类 F1：
 | --- | --- |
 | `bloodmnist.npz` | BloodMNIST 数据文件 |
 | `requirements.txt` | Python 依赖 |
-| `scripts/run_all_experiments.sh` | 默认完整实验脚本，跑三组 CNN 主线实验并生成 summary |
+| `scripts/run_all_experiments.sh` | 默认完整 CNN 实验脚本，跑四组 CNN 主线/消融实验并生成 summary |
 | `scripts/smoke_test.sh` | 快速 smoke test，用少量 batch 检查流程是否能跑通 |
 | `src/analyze_data.py` | 数据集统计、类别分布图、样本图 |
 | `src/dataset.py` | 数据读取、标准化、增强、DataLoader、class weights |
@@ -490,7 +536,7 @@ ResNet18Light 的测试集逐类 F1：
 1. 任务介绍：BloodMNIST 血细胞 8 分类，输入为 `28 x 28` RGB 图像。
 2. 数据分析：展示类别分布和样本图，说明类别不均衡。
 3. 方法设计：介绍数据预处理、标准化、训练增强、评价指标。
-4. 模型设计：按 SimpleCNN、ImprovedCNN、weighted CE、ResNet18Light 的顺序讲清楚递进关系。
+4. 模型设计：按 SimpleCNN、SimpleCNN + augmentation、ImprovedCNN、weighted CE、ResNet18Light 的顺序讲清楚递进关系。
 5. 实验设置：写 batch size、epochs、optimizer、learning rate、early stopping、best checkpoint 选择标准。
 6. 结果对比：引用 `experiment_comparison.csv` 和 `experiment_comparison.png`。
 7. 逐类分析：重点讨论 macro F1、少数类 recall、`immature_granulocyte` 等难分类类别。
@@ -525,10 +571,11 @@ AUC 适合补充医学分类任务中的排序/区分能力分析，ECE 和 reli
 可以按下面逻辑写：
 
 1. SimpleCNN 已经能达到 0.9456 accuracy，说明 BloodMNIST 的图像信息足以支持 CNN 学习。
-2. ImprovedCNN 提升到 0.9649 accuracy，说明更深卷积结构、BatchNorm、Dropout、global pooling 和增强策略有效。
-3. weighted CE 在 ImprovedCNN 上没有改变 overall accuracy，但提升了 macro F1，说明它更适合支持类别不均衡讨论。
-4. ResNet18Light 进一步提升到 0.9702 accuracy 和 0.9687 macro F1，说明残差结构对该任务仍有收益。
-5. 但 ResNet18Light 参数量约 1117 万，远高于 ImprovedCNN 的 30.5 万，因此需要在性能和模型复杂度之间做讨论。
+2. SimpleCNN + augmentation 提升到 0.9506 accuracy 和 0.9466 macro F1，说明训练增强单独就能改善 baseline。
+3. ImprovedCNN 提升到 0.9649 accuracy，说明更深卷积结构、BatchNorm、Dropout 和 global pooling 在增强之外继续有效。
+4. weighted CE 在 ImprovedCNN 上进一步提升到 0.9652 accuracy 和 0.9632 macro F1，说明它更适合支持类别不均衡讨论。
+5. ResNet18Light 进一步提升到 0.9702 accuracy 和 0.9687 macro F1，说明残差结构对该任务仍有收益。
+6. 但 ResNet18Light 参数量约 1117 万，远高于 ImprovedCNN 的 30.5 万，因此需要在性能和模型复杂度之间做讨论。
 
 ## 8. 如何运行
 

@@ -30,6 +30,7 @@ DEFAULT_RUNS = (
     ("resnet18_compare", "outputs/runs/resnet18_compare/checkpoints/best.pt"),
     ("improved_cnn_weighted_ce", "outputs/runs/improved_cnn_weighted_ce/checkpoints/best.pt"),
     ("improved_cnn_ce", "outputs/runs/improved_cnn_ce/checkpoints/best.pt"),
+    ("simple_cnn_aug_ce", "outputs/runs/simple_cnn_aug_ce/checkpoints/best.pt"),
     ("simple_cnn_ce", "outputs/runs/simple_cnn_ce/checkpoints/best.pt"),
 )
 
