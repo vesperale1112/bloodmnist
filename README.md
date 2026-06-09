@@ -76,10 +76,8 @@
 安装依赖：
 
 ```bash
-python3 -m pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
-
-如果另一台电脑上的 Python 不叫 `python3`，运行脚本时可以通过 `PYTHON=/path/to/python` 指定解释器。
 
 快速检查流程：
 
@@ -87,39 +85,42 @@ python3 -m pip install -r requirements.txt
 bash scripts/smoke_test.sh
 ```
 
-运行默认 CNN 主线和增强消融实验：
+推荐按任务运行：
+
+```bash
+# 数据统计和样本图
+bash scripts/analyze_data.sh
+
+# 单独跑新增的 SimpleCNN + augmentation 消融
+DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_simple_cnn_aug.sh
+
+# 给已有 checkpoint 补 AUC/ECE/calibration 输出
+DEVICE=cuda NUM_WORKERS=4 bash scripts/evaluate_checkpoints.sh
+
+# 重新汇总结果表和对比图
+bash scripts/summarize_results.sh
+```
+
+也可以分别运行这些训练脚本：
+
+- `bash scripts/run_simple_cnn.sh`
+- `bash scripts/run_simple_cnn_aug.sh`
+- `bash scripts/run_improved_cnn.sh`
+- `bash scripts/run_improved_cnn_weighted.sh`
+- `bash scripts/run_resnet18.sh`
+
+保留的一键入口：
 
 ```bash
 DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experiments.sh
 ```
 
-默认脚本会运行：
+这个入口会运行 `simple_cnn_ce`、`simple_cnn_aug_ce`、`improved_cnn_ce` 和 `improved_cnn_weighted_ce`，但不自动重训 ResNet18。
 
-1. `simple_cnn_ce`
-2. `simple_cnn_aug_ce`
-3. `improved_cnn_ce`
-4. `improved_cnn_weighted_ce`
-
-其中 `simple_cnn_aug_ce` 只在 SimpleCNN baseline 上打开训练增强，用来把“augmentation 的影响”和“ImprovedCNN 结构本身的影响”分开讨论。
-
-单独运行当前仓库已有的 ResNet18 对照实验：
+当前已有 `resnet18_compare` checkpoint；若只需要补 AUC/ECE，直接运行 `scripts/evaluate_checkpoints.sh` 即可。只有想刷新 ResNet 训练结果时才需要运行：
 
 ```bash
-python3 -m src.train \
-  --model resnet18 \
-  --loss ce \
-  --augment \
-  --lr 5e-4 \
-  --weight-decay 1e-3 \
-  --patience 10 \
-  --run-name resnet18_compare \
-  --device auto
-```
-
-重新生成实验汇总：
-
-```bash
-python3 -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summary
+bash scripts/run_resnet18.sh
 ```
 
 重新训练或重新评估后，`test_metrics.json` 会包含 `macro_auc_ovr`、`weighted_auc_ovr`、`ece`、`mce`、`nll` 和 `brier_score`。逐类表会包含 `auc_ovr`，calibration bin 表和 reliability diagram 会输出到每个 run 的 `tables/` 和 `figures/` 目录。
@@ -127,7 +128,7 @@ python3 -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summa
 生成额外错误样例图：
 
 ```bash
-python3 -m src.error_visuals --device cpu --num-workers 0
+bash scripts/generate_error_visuals.sh
 ```
 
 ## 写报告时的主线

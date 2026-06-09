@@ -34,6 +34,26 @@ def read_json(path: Path) -> dict:
         return json.load(f)
 
 
+def load_test_metrics(run_dir: Path) -> dict:
+    metrics = read_json(run_dir / "metrics" / "test_metrics.json")
+    eval_metrics_path = run_dir / "eval_test" / "test_metrics.json"
+    if not eval_metrics_path.exists():
+        return metrics
+
+    eval_metrics = read_json(eval_metrics_path)
+    for key in (
+        "macro_auc_ovr",
+        "weighted_auc_ovr",
+        "ece",
+        "mce",
+        "nll",
+        "brier_score",
+    ):
+        if eval_metrics.get(key) is not None:
+            metrics[key] = eval_metrics[key]
+    return metrics
+
+
 def main() -> None:
     args = parse_args()
     runs_dir = Path(args.runs_dir)
@@ -50,7 +70,7 @@ def main() -> None:
         best_path = run_dir / "metrics" / "best_summary.json"
         if not metrics_path.exists() or not config_path.exists():
             continue
-        metrics = read_json(metrics_path)
+        metrics = load_test_metrics(run_dir)
         config = read_json(config_path)
         best = read_json(best_path) if best_path.exists() else {}
         run_args = config.get("args", {})

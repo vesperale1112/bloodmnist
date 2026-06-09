@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PYTHON=${PYTHON:-python3}
 DATA=${DATA:-bloodmnist.npz}
 DEVICE=${DEVICE:-auto}
 
-"$PYTHON" -m src.analyze_data --data "$DATA" --output-dir outputs/smoke_dataset
-"$PYTHON" -m src.train \
+python -m src.analyze_data --data "$DATA" --output-dir outputs/smoke_dataset
+python -m src.train \
   --data "$DATA" \
   --model simple_cnn \
   --loss ce \

@@ -1,14 +1,14 @@
 # BloodMNIST Experiment Results
 
-The original three CNN experiments were run with:
+The current CNN experiment script can be run with:
 
 ```bash
 DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experiments.sh
 ```
 
-The current reproducible script now also includes `simple_cnn_aug_ce` as an augmentation ablation for the baseline. Re-run the script on a full training machine before adding that row to the formal results table.
+The scripts now include `simple_cnn_aug_ce` as an augmentation ablation for the baseline. Run `bash scripts/run_simple_cnn_aug.sh` before adding that row to the formal results table.
 
-Newer training/evaluation code also records one-vs-rest AUC and calibration metrics (`ece`, `mce`, `nll`, `brier_score`). Existing result rows should be regenerated or re-evaluated before comparing those fields.
+Newer training/evaluation code also records one-vs-rest AUC and calibration metrics (`ece`, `mce`, `nll`, `brier_score`). Existing checkpoints can be re-evaluated with `bash scripts/evaluate_checkpoints.sh`; ResNet does not need to be retrained just to generate those metrics.
 
 ## Main Results
 

@@ -6,51 +6,12 @@ EPOCHS=${EPOCHS:-50}
 BATCH_SIZE=${BATCH_SIZE:-128}
 DEVICE=${DEVICE:-auto}
 NUM_WORKERS=${NUM_WORKERS:-2}
-PYTHON=${PYTHON:-python3}
 
-"$PYTHON" -m src.analyze_data --data "$DATA" --output-dir outputs/dataset
+export DATA EPOCHS BATCH_SIZE DEVICE NUM_WORKERS
 
-"$PYTHON" -m src.train \
-  --data "$DATA" \
-  --model simple_cnn \
-  --loss ce \
-  --run-name simple_cnn_ce \
-  --epochs "$EPOCHS" \
-  --batch-size "$BATCH_SIZE" \
-  --device "$DEVICE" \
-  --num-workers "$NUM_WORKERS"
-
-"$PYTHON" -m src.train \
-  --data "$DATA" \
-  --model simple_cnn \
-  --loss ce \
-  --augment \
-  --run-name simple_cnn_aug_ce \
-  --epochs "$EPOCHS" \
-  --batch-size "$BATCH_SIZE" \
-  --device "$DEVICE" \
-  --num-workers "$NUM_WORKERS"
-
-"$PYTHON" -m src.train \
-  --data "$DATA" \
-  --model improved_cnn \
-  --loss ce \
-  --augment \
-  --run-name improved_cnn_ce \
-  --epochs "$EPOCHS" \
-  --batch-size "$BATCH_SIZE" \
-  --device "$DEVICE" \
-  --num-workers "$NUM_WORKERS"
-
-"$PYTHON" -m src.train \
-  --data "$DATA" \
-  --model improved_cnn \
-  --loss weighted_ce \
-  --augment \
-  --run-name improved_cnn_weighted_ce \
-  --epochs "$EPOCHS" \
-  --batch-size "$BATCH_SIZE" \
-  --device "$DEVICE" \
-  --num-workers "$NUM_WORKERS"
-
-"$PYTHON" -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summary
+bash scripts/analyze_data.sh
+bash scripts/run_simple_cnn.sh
+bash scripts/run_simple_cnn_aug.sh
+bash scripts/run_improved_cnn.sh
+bash scripts/run_improved_cnn_weighted.sh
+bash scripts/summarize_results.sh

@@ -535,10 +535,8 @@ AUC 适合补充医学分类任务中的排序/区分能力分析，ECE 和 reli
 ### 8.1 安装依赖
 
 ```bash
-python3 -m pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
-
-如果目标电脑上的 Python 解释器路径不同，可以在运行脚本时设置 `PYTHON=/path/to/python`。
 
 ### 8.2 快速检查
 
@@ -548,7 +546,33 @@ bash scripts/smoke_test.sh
 
 这个脚本会生成 `outputs/smoke_dataset/` 和一个 `smoke_simple_cnn` run，用来检查数据读取、训练、评估和图像导出是否正常。
 
-### 8.3 运行默认 CNN 主线和增强消融实验
+### 8.3 按任务运行脚本
+
+推荐先按下面顺序跑：
+
+```bash
+# 数据统计和样本图
+bash scripts/analyze_data.sh
+
+# 新增 SimpleCNN + augmentation 消融实验
+DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_simple_cnn_aug.sh
+
+# 给已有 checkpoint 补 AUC/ECE/calibration 输出
+DEVICE=cuda NUM_WORKERS=4 bash scripts/evaluate_checkpoints.sh
+
+# 重新汇总结果表和对比图
+bash scripts/summarize_results.sh
+```
+
+也可以分别运行这些训练脚本：
+
+- `bash scripts/run_simple_cnn.sh`
+- `bash scripts/run_simple_cnn_aug.sh`
+- `bash scripts/run_improved_cnn.sh`
+- `bash scripts/run_improved_cnn_weighted.sh`
+- `bash scripts/run_resnet18.sh`
+
+### 8.4 一键运行 CNN 实验
 
 ```bash
 DEVICE=cuda NUM_WORKERS=4 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experiments.sh
@@ -569,44 +593,37 @@ DEVICE=auto NUM_WORKERS=0 EPOCHS=50 BATCH_SIZE=128 bash scripts/run_all_experime
 
 其中 `simple_cnn_aug_ce` 是新增的增强消融实验，用来单独验证训练增强对 SimpleCNN baseline 的影响。注意：该脚本仍不自动跑 `resnet18_compare`。
 
-### 8.4 单独运行 ResNet18 对照实验
+### 8.5 ResNet18 怎么处理
+
+当前仓库已经有 `resnet18_compare` 的 checkpoint。如果只是为了补 AUC/ECE/calibration，不需要重训 ResNet，运行 `bash scripts/evaluate_checkpoints.sh` 即可。
+
+只有想刷新 ResNet18 的训练结果时，才运行：
 
 ```bash
-python3 -m src.train \
-  --model resnet18 \
-  --loss ce \
-  --augment \
-  --lr 5e-4 \
-  --weight-decay 1e-3 \
-  --patience 10 \
-  --run-name resnet18_compare \
-  --device auto
+bash scripts/run_resnet18.sh
 ```
 
-### 8.5 重新汇总结果
+### 8.6 重新汇总结果
 
 ```bash
-python3 -m src.summarize_runs --runs-dir outputs/runs --output-dir outputs/summary
+bash scripts/summarize_results.sh
 ```
 
-### 8.6 生成错误样例图
+### 8.7 生成错误样例图
 
 ```bash
-python3 -m src.error_visuals --device cpu --num-workers 0
+bash scripts/generate_error_visuals.sh
 ```
 
-### 8.7 重新评估已有 checkpoint 以生成 AUC/ECE
+### 8.8 重新评估已有 checkpoint 以生成 AUC/ECE
 
 如果已有 checkpoint 是旧代码训练出来的，可以不用重训，直接运行：
 
 ```bash
-python3 -m src.evaluate \
-  --checkpoint outputs/runs/resnet18_compare/checkpoints/best.pt \
-  --split test \
-  --device auto
+bash scripts/evaluate_checkpoints.sh
 ```
 
-这会在对应 run 目录下生成 `eval_test/`，其中包含新的 AUC、ECE、calibration bins 和 reliability diagram。
+这会在每个已有 run 目录下生成 `eval_test/`，其中包含新的 AUC、ECE、calibration bins 和 reliability diagram。
 
 ## 9. 局限性与后续改进
 
